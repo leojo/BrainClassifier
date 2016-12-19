@@ -1,0 +1,4 @@
+data/*
+*.tar.gz
+*.pyc
+Features/*.feature
