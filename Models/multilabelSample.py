@@ -35,8 +35,10 @@ def plot_subfigure(X, Y, subplot, title, transform):
     max_y = np.max(X[:, 1])
 
     classif = OneVsRestClassifier(SVC(kernel='linear'))
+    print Y.shape
+    print X.shape
     classif.fit(X, Y)
-
+    exit()
     plt.subplot(2, 2, subplot)
     plt.title(title)
 
