@@ -1,0 +1,33 @@
+Machine Learning project 2 - ETH Zurich 2016
+
+Team members:
+Andrea Bjornsdottir - bjandrea@student.ethz.ch
+Leo Johannsson - leoj@student.ethz.ch
+	Third teammember unfortunately resigned from the course after first project!
+
+Description
+	We have taken two features from the data and for each kind of feature, trained a model that is
+	a combination of several models.
+
+	For our final submission, we gave these models weights based on their log loss score and performed
+	a weighted average of the predictions.
+
+Preprocessing
+	PCA to reduce dimensions, standard scaling, split brains to sections 8x8x8 to keep structural information
+
+Features
+	Our features were gray areas of the brain, similarity between right and left brain, and previously histograms
+	of the brain but we removed those because they reduced the quality of the model.
+	
+Model
+	For each of the features, that is flip and gray areas, we used the following models,
+		* Random Forest Classifier 
+		* SVM linear classifier 
+		* Gaussian Process classifier
+		* Neural net
+
+	For each feature, we fitted each of these models and then we combined them using Voting Classifier.
+
+Postprocessing
+	Predictions from both voting classifier models were combined
+	using a weighted average as previously stated.
