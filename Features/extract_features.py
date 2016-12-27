@@ -26,7 +26,7 @@ def extractHistograms(imgDir, maxValue = 4000, nBins = -1, nPartitions = 1):
 	imgPath = os.path.join(imgDir,"*")
 
 	# This is the cache for the feature, used to make sure we do the heavy computations more often than neccesary
-	outputFileName = os.path.join(featuresDir,"histograms_"+str(nBins)+"-"+str(maxValue)+"_"+imgDir.replace(os.sep,"-")+".feature")
+	outputFileName = os.path.join(featuresDir,"histograms_"+str(nBins)+"-"+str(maxValue)+"-"+str(nPartitions)+"_"+imgDir.replace(os.sep,"-")+".feature")
 	if os.path.isfile(outputFileName):
 		save = open(outputFileName,'rb')
 		histograms = pickle.load(save)
