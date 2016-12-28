@@ -1,4 +1,4 @@
 data/*
 *.tar.gz
 *.pyc
-Features/*.feature
+Features/*.feature*
