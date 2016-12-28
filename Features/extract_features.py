@@ -25,7 +25,7 @@ def extractHistograms(imgDir, maxValue = 4000, nBins = -1, nPartitions = 1):
 	binSize = math.ceil((maxValue*1.)/nBins)
 	imgPath = os.path.join(imgDir,"*")
 
-	# This is the cache for the feature, used to make sure we do the heavy computations more often than neccesary
+	# This is the cache for the feature, used to make sure we do the heavy computations more often than necessary
 	outputFileName = os.path.join(featuresDir,"histograms_"+str(nBins)+"-"+str(maxValue)+"-"+str(nPartitions)+"_"+imgDir.replace(os.sep,"-")+".feature")
 	if os.path.isfile(outputFileName):
 		save = open(outputFileName,'rb')
@@ -98,7 +98,7 @@ def mse(imageA, imageB):
 def extractFlipSim(imgDir,nPartitions=8,exponent=50):
 	imgPath = os.path.join(imgDir,"*")
 
-	# This is the cache for the feature, used to make sure we do the heavy computations more often than neccesary
+	# This is the cache for the feature, used to make sure we do the heavy computations more often than necessary
 	outputFileName = os.path.join(featuresDir,"flipsim_"+str(nPartitions)+"-"+str(exponent)+"_"+imgDir.replace(os.sep,"-")+".feature")
 	if os.path.isfile(outputFileName):
 		save = open(outputFileName,'rb')
@@ -160,7 +160,7 @@ def extractFlipSim(imgDir,nPartitions=8,exponent=50):
 def extractBrainSize(imgDir): 
 	imgPath = os.path.join(imgDir,"*")
 
-	# This is the cache for the feature, used to make sure we do the heavy computations more often than neccesary
+	# This is the cache for the feature, used to make sure we do the heavy computations more often than necessary
 	outputFileName = os.path.join(featuresDir,"brainsize_"+imgDir.replace(os.sep,"-")+".feature")
 	if os.path.isfile(outputFileName):
 		save = open(outputFileName,'rb')
@@ -199,7 +199,7 @@ def extractBrainSize(imgDir):
 
 def extractCompleteBrain(imgDir):
 	imgPath = os.path.join(imgDir,"*")
-	# This is the cache for the feature, used to make sure we do the heavy computations more often than neccesary
+	# This is the cache for the feature, used to make sure we do the heavy computations more often than necessary
 	outputFileName = os.path.join(featuresDir,"complete_"+imgDir.replace(os.sep,"-")+".feature")
 	if os.path.isfile(outputFileName):
 		save = open(outputFileName,'rb')
@@ -226,7 +226,7 @@ def extractCompleteBrain(imgDir):
 
 def extractBrainPart(imgDir,n_divisions=3,x_part=0,y_part=0,z_part=0):
 	imgPath = os.path.join(imgDir,"*")
-	# This is the cache for the feature, used to make sure we do the heavy computations more often than neccesary
+	# This is the cache for the feature, used to make sure we do the heavy computations more often than necessary
 	outputFileName = os.path.join(featuresDir,"brainpart_"+str(n_divisions)+"_"+str(x_part)+"_"+str(y_part)+"_"+str(z_part)+"_"+imgDir.replace(os.sep,"-")+".feature")
 	if os.path.isfile(outputFileName):
 		save = open(outputFileName,'rb')
@@ -365,7 +365,7 @@ def extractZoneAverages(imgDir, nPartitions = 1):
 
 	allZoneAverages = []
 
-	# This is the cache for the feature, used to make sure we do the heavy computations more often than neccesary
+	# This is the cache for the feature, used to make sure we do the heavy computations more often than necessary
 	outputFileName = os.path.join(featuresDir,"zoneavg_"+str(nPartitions)+"_"+imgDir.replace(os.sep,"-")+".feature")
 	if os.path.isfile(outputFileName):
 		save = open(outputFileName,'rb')
@@ -439,7 +439,7 @@ def extractBlackzones(imgDir, nPartitions=1):
 
 	allBlackZones = []
 
-	# This is the cache for the feature, used to make sure we do the heavy computations more often than neccesary
+	# This is the cache for the feature, used to make sure we do the heavy computations more often than necessary
 	outputFileName = os.path.join(featuresDir,"blackzones_"+str(nPartitions)+"_"+imgDir.replace(os.sep,"-")+".feature")
 	if os.path.isfile(outputFileName):
 		save = open(outputFileName,'rb')
@@ -486,7 +486,7 @@ def extractBlackzones(imgDir, nPartitions=1):
 def extractThreeColors(imgDir, darkColor, grayColor, whiteColor, nPartitions=1):
 	imgPath = os.path.join(imgDir,"*")
 
-	# This is the cache for the feature, used to make sure we do the heavy computations more often than neccesary
+	# This is the cache for the feature, used to make sure we do the heavy computations more often than necessary
 	outputFileName = os.path.join(featuresDir,"threeColors_"+str(nPartitions)+"_"+str(darkColor)+"_"+str(grayColor)+"_"+str(whiteColor)+"_"+imgDir.replace(os.sep,"-")+".feature")
 	if os.path.isfile(outputFileName):
 		save = open(outputFileName,'rb')
@@ -545,7 +545,7 @@ def extractThreeColors(imgDir, darkColor, grayColor, whiteColor, nPartitions=1):
 def extractColorPercentage(imgDir, upperDark, upperGray, firstColor, secondColor):
 	imgPath = os.path.join(imgDir,"*")
 
-	# This is the cache for the feature, used to make sure we do the heavy computations more often than neccesary
+	# This is the cache for the feature, used to make sure we do the heavy computations more often than necessary
 	outputFileName = os.path.join(featuresDir,"2ColorPercentage_"+str(upperDark)+"_"+str(upperGray)+"_"+str(firstColor)+"_"+str(secondColor)+"_"+imgDir.replace(os.sep,"-")+".feature")
 	if os.path.isfile(outputFileName):
 		save = open(outputFileName,'rb')
@@ -603,7 +603,7 @@ def extractColorPercentage(imgDir, upperDark, upperGray, firstColor, secondColor
 def extractColorPercentage(imgDir, upperDark, upperGray):
 	imgPath = os.path.join(imgDir,"*")
 
-	# This is the cache for the feature, used to make sure we do the heavy computations more often than neccesary
+	# This is the cache for the feature, used to make sure we do the heavy computations more often than necessary
 	outputFileName = os.path.join(featuresDir,"2ColorPercentage_"+str(upperDark)+"_"+str(upperGray)+"_"+imgDir.replace(os.sep,"-")+".feature")
 	if os.path.isfile(outputFileName):
 		save = open(outputFileName,'rb')
@@ -676,7 +676,7 @@ def extractColoredZone(imgDir, minColor, maxColor, nPartitions=1):
 
 	allColoredZones = []
 
-	# This is the cache for the feature, used to make sure we do the heavy computations more often than neccesary
+	# This is the cache for the feature, used to make sure we do the heavy computations more often than necessary
 	outputFileName = os.path.join(featuresDir,"coloredzones2d_"+str(nPartitions)+"_"+str(minColor)+"_"+str(maxColor)+"_"+imgDir.replace(os.sep,"-")+".feature")
 	if os.path.isfile(outputFileName):
 		save = open(outputFileName,'rb')
@@ -727,7 +727,7 @@ def extractColoredZone3D(imgDir, minColor, maxColor, nPartitions=1):
 
 	allColoredZones = []
 
-	# This is the cache for the feature, used to make sure we do the heavy computations more often than neccesary
+	# This is the cache for the feature, used to make sure we do the heavy computations more often than necessary
 	outputFileName = os.path.join(featuresDir,"coloredzones_"+str(nPartitions)+"_"+str(minColor)+"_"+str(maxColor)+"_"+imgDir.replace(os.sep,"-")+".feature")
 	if os.path.isfile(outputFileName):
 		save = open(outputFileName,'rb')
@@ -770,6 +770,69 @@ def extractColoredZone3D(imgDir, minColor, maxColor, nPartitions=1):
 	output.close()
 	print "Done"
 	return allColoredZones
+	
+def extractHippocampi(imgDir):
+	imgPath = os.path.join(imgDir,"*")
+
+	# This is the cache for the feature, used to make sure we do the heavy computations more often than necessary
+	outputFileName = os.path.join(featuresDir,"hippocampi_raw.feature")
+	if os.path.isfile(outputFileName):
+		save = open(outputFileName,'rb')
+		hippocampi = pickle.load(save)
+		save.close()
+		return hippocampi
+
+	# Fetch all directory listings of set_train and sort them on the image number
+	allImageSrc = sorted(glob.glob(imgPath), key=extractImgNumber)
+	hippocampi = []
+	n_samples = len(allImageSrc);
+	if os.path.isfile(outputFileName+".part"):
+		save = open(outputFileName+".part",'rb')
+		hippocampi = pickle.load(save)
+		save.close()
+		print "Found "+str(n_samples)+" images, "+str(len(hippocampi))+" already processed. Resuming..."
+	else:
+		print "Found "+str(n_samples)+" images!"
+		print "Preparing the data"
+
+	img_shape = nib.load(allImageSrc[0]).get_data().shape
+	imgHalfY = img_shape[1]/2
+	printProgress(len(hippocampi), n_samples, decimals = 3)
+	for i in range(len(hippocampi),n_samples):
+		img = nib.load(allImageSrc[i])
+		imgData = img.get_data();
+		hippocampus = imgData[100:125, imgHalfY, 45:70, 0] #MAGIC NUMBERS, DO NOT MEDDLE!!!
+		hippocampi.append(hippocampus.flatten())
+		#output = open(outputFileName+".part","wb")
+		#pickle.dump(hippocampi,output)
+		#output.close()
+		printProgress(i+1, n_samples, decimals = 3)
+
+	print "\nStoring the features in "+outputFileName
+	output = open(outputFileName,"wb")
+	pickle.dump(hippocampi,output)
+	output.close()
+	print "Done"
+
+	if os.path.isfile(outputFileName+".part"):
+		os.remove(outputFileName+".part")
+	
+	return hippocampi
+
+def extractHippocampusMeans(imgDir):
+	hippocampi = extractHippocampi(imgDir)
+	return np.mean(hippocampi,axis=1)
+	
+def extractHippocampusVars(imgDir):
+	hippocampi = extractHippocampi(imgDir)
+	return np.var(hippocampi,axis=1)
+	
+def extractHippocampusHistograms(imgDir,maxValue=4000,bins=45):
+	hippocampi = extractHippocampi(imgDir)
+	histograms = []
+	for h in hippocampi:
+		histograms.append(np.histogram(h,bins=bins, range=(1,maxValue))[0])
+	return histograms
 
 
 def extractImgNumber(imgPath):
