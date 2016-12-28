@@ -37,10 +37,21 @@ def extractHistograms(imgDir, maxValue = 4000, nBins = -1, nPartitions = 1):
 	allImageSrc = sorted(glob.glob(imgPath), key=extractImgNumber)
 	histograms = []
 	n_samples = len(allImageSrc);
-	print "Found "+str(n_samples)+" images!"
-	print "Preparing the data"
-	printProgress(0, n_samples)
-	for i in range(0,n_samples):
+	if os.path.isfile(outputFileName+".part"):
+		save = open(outputFileName+".part",'rb')
+		histograms = pickle.load(save)
+		save.close()
+		print "Found "+str(n_samples)+" images, "+str(len(histograms))+" already processed. Resuming..."
+	else:
+		print "Found "+str(n_samples)+" images!"
+		print "Preparing the data"
+	
+	img_shape = nib.load(allImageSrc[0]).get_data().shape
+	n_voxels=img_shape[0]*img_shape[1]*img_shape[2]
+	n_iter = n_voxels*n_samples
+	iter_count = len(histograms)*n_voxels
+	printProgress(iter_count, n_iter)
+	for i in range(len(histograms),n_samples):
 		img = nib.load(allImageSrc[i])
 		imgData = img.get_data();
 
@@ -56,8 +67,13 @@ def extractHistograms(imgDir, maxValue = 4000, nBins = -1, nPartitions = 1):
 					if val < maxValue and val > 0:
 						c = int(val/binSize)
 						single_brain[partX][partY][partZ][c] += 1
+					iter_count += 1
+					printProgress(iter_count, n_iter, decimals = 5)
 		histograms.append(single_brain.flatten().tolist())
-		printProgress(i+1, n_samples)
+		
+		output = open(outputFileName+".part","wb")
+		pickle.dump(histograms,output)
+		output.close()
 
 	print "\nStoring the features in "+outputFileName
 	output = open(outputFileName,"wb")
@@ -65,6 +81,9 @@ def extractHistograms(imgDir, maxValue = 4000, nBins = -1, nPartitions = 1):
 	output.close()
 	print "Done"
 
+	if os.path.isfile(outputFileName+".part"):
+		os.remove(outputFileName+".part")
+	
 	return histograms
 
 
