@@ -135,6 +135,49 @@ def extractFlipSim(imgDir,nPartitions=8,exponent=50):
 
 	return data
 
+# Test function to see if there is a significant
+# difference in the amount of voxels between
+# male and female brains
+def extractBrainSize(imgDir): 
+	imgPath = os.path.join(imgDir,"*")
+
+	# This is the cache for the feature, used to make sure we do the heavy computations more often than neccesary
+	outputFileName = os.path.join(featuresDir,"brainsize_"+imgDir.replace(os.sep,"-")+".feature")
+	if os.path.isfile(outputFileName):
+		save = open(outputFileName,'rb')
+		brainsizes = pickle.load(save)
+		save.close()
+		return brainsizes
+
+	# Fetch all directory listings of set_train and sort them on the image number
+	allImageSrc = sorted(glob.glob(imgPath), key=extractImgNumber)
+	brainsizes = []
+	n_samples = len(allImageSrc);
+	print "Found "+str(n_samples)+" images!"
+	print "Preparing the data"
+	printProgress(0, n_samples)
+	for i in range(0,n_samples):
+		img = nib.load(allImageSrc[i])
+		imgData = img.get_data();
+
+		voxelCount = 0
+		for x in range(imgData.shape[0]):
+			for y in range(imgData.shape[1]):
+				for z in range(imgData.shape[2]):
+					val = imgData[x][y][z][0]
+					if val > 0:
+						voxelCount += 1	
+		brainsizes.append(voxelCount)
+		printProgress(i+1, n_samples)
+
+	print "\nStoring the features in "+outputFileName
+	output = open(outputFileName,"wb")
+	pickle.dump(brainsizes,output)
+	output.close()
+	print "Done"
+
+	return brainsizes
+
 def extractCompleteBrain(imgDir):
 	imgPath = os.path.join(imgDir,"*")
 	# This is the cache for the feature, used to make sure we do the heavy computations more often than neccesary
