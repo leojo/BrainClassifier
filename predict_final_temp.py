@@ -1,4 +1,5 @@
 import csv
+import sys
 import numpy as np
 from sklearn import pipeline
 from sklearn.svm import SVC
@@ -227,7 +228,19 @@ def createPredictions(testFeatures, sexWeightedVoters, ageWeightedVoters, health
 		predictions.append(totalPrediction.tolist())
 	
 	id = 0
-	for sample in zip(*predictions):
-	
-	
+	resultFileName = 'submission'
+	if len(sys.argv) == 2:
+		resultFileName = sys.argv[1]
+	if resultFileName[-4:] != ".csv":
+		resultFileName += ".csv"
+	with open(resultFileName, 'w') as csvfile:
+		resultWriter = csv.writer(csvfile, delimiter=',', quotechar='|')
+		resultWriter.writerow(['ID','Sample','Label','Predicted'])
+		for sample_no, sample in enumerate(zip(*predictions)):
+			for label, prediction in zip(['gender','age','health'],[bool(sample[0]),bool(sample[1]),bool(sample[2])])
+				row=[id,sample_no,label,prediction]
+				resultWriter.writerow(row)
+				id+=1
+		csvfile.close()
+
 	
