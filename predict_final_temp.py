@@ -183,6 +183,8 @@ def calculateVariance(feature, classLabel):
 # Create a voting classifier from several classifiers for EACH feature, then
 # create a voting classifier from these feature-specific classifiers
 def createVotingClassifier(classLabel, features, pipelines, names, classifiers):
+	voterWeights = []
+
 	# Create a model for each kind of feature and preprocessing pipeline for that feature:
 	for feature, preproc in zip(features, pipelines):
 		
@@ -195,7 +197,7 @@ def createVotingClassifier(classLabel, features, pipelines, names, classifiers):
 				classifier)
 
 			scorer = make_scorer(hammingLoss,greater_is_better=False)
-			scores = cross_val_score(pl, feature, targets[classLabel], cv=10, scoring=scorer, n_jobs=1)
+			scores = cross_val_score(pl, feature, targets[:,classLabel], cv=10, scoring=scorer, n_jobs=1)
 			print "score: %0.2f (+/- %0.2f) [%s]" % (-scores.mean(), scores.std(),name)
 			weights.append(1.0/(-scores.mean()))
 
@@ -210,3 +212,22 @@ def createVotingClassifier(classLabel, features, pipelines, names, classifiers):
 		model.fit(data,targets)
 		voterWeights.append(1.0/(-scores.mean()))
 		voters.append(model)
+	return np.array(zip(voters,voterWeights)) # Since the voters in this "model" require different feature-preprocessing it must be used manually
+	
+def createPredictions(testFeatures, sexWeightedVoters, ageWeightedVoters, healthWeightedVoters):
+	numTestSamples = np.asarray(testFeatures[0]).shape[0]
+	predictions = []
+	for weightedVoters in [sexWeightedVoters,ageWeightedVoters,healthWeightedVoters]:
+		totalWeight = np.sum(weightedVoters[:,1])
+		totalPrediction = np.array([0]*numTestSamples)
+		for feature,voter,weight in zip(testFeatures,*zip(*weightedVoters)):
+			prediction0, prediction1 = zip(*voter.predict_proba(feature))
+			totalPrediction += np.array(prediction1)*float(weight)/float(totalWeight)
+		totalPrediction = np.round(totalPrediction)
+		predictions.append(totalPrediction.tolist())
+	
+	id = 0
+	for sample in zip(*predictions):
+	
+	
+	

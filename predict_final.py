@@ -44,7 +44,6 @@ model = OneVsRestClassifier(SVC(kernel='linear'))
 scorer = make_scorer(hammingLoss,greater_is_better=False)
 scores = cross_val_score(model, flip, targets, cv=10, scoring=scorer, n_jobs=1)
 print "score: %0.2f (+/- %0.2f) [%s]" % (-scores.mean(), scores.std(),"OneVsRestClassifier")
-exit()
 print "Training model"
 
 
