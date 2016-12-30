@@ -38,7 +38,6 @@ def plot_subfigure(X, Y, subplot, title, transform):
     print Y.shape
     print X.shape
     classif.fit(X, Y)
-    exit()
     plt.subplot(2, 2, subplot)
     plt.title(title)
 
