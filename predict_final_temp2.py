@@ -224,7 +224,7 @@ def createSingleLabelVC(classLabel, features, pipelines, names, classifiers):
 	voterWeights = []
 	voters = []
 	# Create a model for each kind of feature and preprocessing pipeline for that feature:
-	for feature, preproc in zip(features, pipelines):
+	for i, feature, preproc in zip(range(len(features)), features, pipelines):
 		
 		print "Shape of feature:",np.asarray(feature).shape
 		print "Shape of targets:",targets[:,classLabel].shape
@@ -260,7 +260,7 @@ def createSingleLabelVC(classLabel, features, pipelines, names, classifiers):
 	# NOTE: Later on it would be better if we didn't return best, but a combination of the others, like before
 		if(-scores.mean() < bestVoterScore):
 			bestVoterScore = -scores.mean()
-			bestVoter = model
+			bestVoter = [model, i]
 
 	return bestVoter
 
@@ -382,21 +382,21 @@ if __name__=="__main__":
 	allClassifiers.append(mlpBased)
 	classifier_names.append("MLP base")
 
-	votingClassifier = createVotingClassifier(allFeatures,allPipelines,classifier_names,allClassifiers)
-	votingClassifier.fit(allFeatures,targets)
+	#votingClassifier = createVotingClassifier(allFeatures,allPipelines,classifier_names,allClassifiers)
+	#votingClassifier.fit(allFeatures,targets)
 
 	# ==========================================
 	# 				   SEX 
 	# ==========================================
 
-	createSingleLabelVC(0, allFeatures, allPipelines, classifier_names, allClassifiers)
+	sexModel = createSingleLabelVC(0, allFeatures, allPipelines, classifier_names, allClassifiers)
 
 	# ==========================================
 	# 				   AGE 
 	# ==========================================
 
 
-	createSingleLabelVC(1, allFeatures, allPipelines, classifier_names, allClassifiers)
+	ageModel = createSingleLabelVC(1, allFeatures, allPipelines, classifier_names, allClassifiers)
 
 
 	# ==========================================
@@ -404,7 +404,7 @@ if __name__=="__main__":
 	# ==========================================
 
 
-	createSingleLabelVC(2, allFeatures, allPipelines, classifier_names, allClassifiers)
+	healthModel = createSingleLabelVC(2, allFeatures, allPipelines, classifier_names, allClassifiers)
 
 
 
