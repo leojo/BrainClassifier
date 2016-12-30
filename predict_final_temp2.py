@@ -216,13 +216,61 @@ def makeAllPlots(allX, Y, classif):
 	for i in range(0, len(allX)):
 		makePlot(allX[i], Y, classif, 1)
 
+# Returns the best voting classifier, I.E. the classifier created from the feature that worked
+# best for this label
+def createSingleLabelVC(classLabel, features, pipelines, names, classifiers):
+	bestVoter = None
+	bestVoterScore = 1
+	voterWeights = []
+	voters = []
+	# Create a model for each kind of feature and preprocessing pipeline for that feature:
+	for feature, preproc in zip(features, pipelines):
+		
+		print "Shape of feature:",np.asarray(feature).shape
+		print "Shape of targets:",targets[:,classLabel].shape
+		# We want the model to be a voter combined from several classifiers:
+		weights = []
+		for name, classifier in zip(names,classifiers):
+			print(name)
+			pl = pipeline.make_pipeline(
+				preproc,
+				classifier)
+
+			scorer = make_scorer(partialHammingLoss,greater_is_better=False)
+			scores = cross_val_score(pl, feature, targets[:,classLabel], cv=10, scoring=scorer, n_jobs=1)
+			print "score: %0.2f (+/- %0.2f) [%s]" % (-scores.mean(), scores.std(),name)
+			weights.append(1.0/(-scores.mean()))
+
+		model = pipeline.make_pipeline(
+				preproc,
+				VotingClassifier(zip(names,classifiers), voting='soft', weights=weights ,n_jobs=1)
+				)
+
+		print "\nCalculating score of model:"
+		scorer = make_scorer(partialHammingLoss,greater_is_better=False)
+		scores = cross_val_score(model, feature, targets[:,classLabel], cv=10, scoring=scorer, n_jobs=1)
+		print "score: %0.2f (+/- %0.2f) [%s]" % (-scores.mean(), scores.std(),"VotingClassifier")
+
+
+		#model.fit(feature,targets[:,classLabel])
+		#voterWeights.append(1.0/(-scores.mean()))
+		#voters.append(model)
+	#return np.array(zip(voters,voterWeights)) # Since the voters in this "model" require different feature-preprocessing it must be used manually
+
+	# NOTE: Later on it would be better if we didn't return best, but a combination of the others, like before
+		if(-scores.mean() < bestVoterScore):
+			bestVoterScore = -scores.mean()
+			bestVoter = model
+
+	return bestVoter
+
 # ===================================================================================================
 #				  					        MAIN FUNCTIONALITY
 # ===================================================================================================
 
 if __name__=="__main__":
 
-	shouldPlot = True
+	shouldPlot = False
 
 	# ==========================================
 	#				   TARGETS
@@ -270,7 +318,7 @@ if __name__=="__main__":
 
 	testHisto = extractHistograms('data/set_test', 4000, 45, 9)
 	testFlipzones = extractFlipSim('data/set_test')
-	blackzone = extractBlackzones('data/set_train',nPartitions=3)
+	testBlackzone = extractBlackzones('data/set_test',nPartitions=3)
 	testGrayzone = extractColoredZone3D('data/set_test', 450, 800, 8)
 	testHippocMedian = extractHippocampusMedians('data/set_test')
 	testHippocMean = extractHippocampusMeans('data/set_test')
@@ -279,7 +327,7 @@ if __name__=="__main__":
 
 	allTestFeatures.append(testHisto)
 	allTestFeatures.append(testFlipzones)
-	allTestFeatures.append(blackzone)
+	allTestFeatures.append(testBlackzone)
 	#allTestFeatures.append(whitegray)
 	allTestFeatures.append(testGrayzone)
 	allTestFeatures.append(testHippocVar)
@@ -320,10 +368,10 @@ if __name__=="__main__":
 	allClassifiers = []
 	classifier_names = []
 
-	gaussBased = OneVsRestClassifier(GaussianProcessClassifier(1.0 * RBF(1.0), warm_start=True))
-	logBased = OneVsRestClassifier(LogisticRegression())
-	rforestBased = OneVsRestClassifier(RandomForestClassifier(max_depth=30,n_estimators=200))
-	mlpBased = OneVsRestClassifier(MLPClassifier(alpha=1))
+	gaussBased = GaussianProcessClassifier(1.0 * RBF(1.0), warm_start=True)
+	logBased = LogisticRegression()
+	rforestBased = RandomForestClassifier(max_depth=30,n_estimators=200)
+	mlpBased = MLPClassifier(alpha=1)
 
 	allClassifiers.append(gaussBased)
 	classifier_names.append("Gaussian Process base")
@@ -336,6 +384,28 @@ if __name__=="__main__":
 
 	votingClassifier = createVotingClassifier(allFeatures,allPipelines,classifier_names,allClassifiers)
 	votingClassifier.fit(allFeatures,targets)
+
+	# ==========================================
+	# 				   SEX 
+	# ==========================================
+
+	createSingleLabelVC(0, allFeatures, allPipelines, classifier_names, allClassifiers)
+
+	# ==========================================
+	# 				   AGE 
+	# ==========================================
+
+
+	createSingleLabelVC(1, allFeatures, allPipelines, classifier_names, allClassifiers)
+
+
+	# ==========================================
+	# 				  HEALTH 
+	# ==========================================
+
+
+	createSingleLabelVC(2, allFeatures, allPipelines, classifier_names, allClassifiers)
+
 
 
 	# ==========================================
