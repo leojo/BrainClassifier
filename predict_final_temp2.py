@@ -47,11 +47,139 @@ Goal:
 5. Generate an output file with predictions of each label for all test images
 '''
 
+# ===================================================================================================
+#				  					        MAIN FUNCTIONALITY
+# ===================================================================================================
 
-# ==========================================
-#				  HELPER FUNCTIONS
-# ==========================================
+if __name__=="__main__":
+	# ==========================================
+	#				   TARGETS
+	# ==========================================
+	# Get the targets
+	with open('data/targets.csv', 'rb') as f:
+	    reader = csv.reader(f)
+	    targets = list(reader)
 
+	targets = np.array(targets).astype(np.int)
+	targets_sex, targets_age, targets_health = zip(*targets) 
+
+	# ==========================================
+	#				 TRAIN FEATURES
+	# ==========================================
+	# TO BE ADDED: Gray white ratio; black zones from center of brain
+
+	allFeatures = []
+
+	histo = extractHistograms('data/set_train', 4000, 45, 9)
+	flipzones = extractFlipSim('data/set_train')
+	blackzone = extractBlackzones('data/set_train',nPartitions=3)
+	grayzone = extractColoredZone3D('data/set_train', 450, 800, 8)
+	hippocMedian = extractHippocampusMedians('data/set_train')
+	hippocMean = extractHippocampusMeans('data/set_train')
+	hippocVar = extractHippocampusVars('data/set_train')
+	hippocHisto = extractHippocampusHistograms('data/set_train')
+
+	allFeatures.append(histo)
+	allFeatures.append(flipzones)
+	allFeatures.append(blackzone)
+	#allFeatures.append(whitegray)
+	allFeatures.append(grayzone)
+	allFeatures.append(hippocVar)
+	allFeatures.append(hippocMean)
+	allFeatures.append(hippocMedian)
+	allFeatures.append(hippocHisto)
+
+	# ==========================================
+	#				  TEST FEATURES
+	# ==========================================
+	# TO BE ADDED: Gray white ratio; black zones from center of brain
+
+	allTestFeatures = []
+
+	testHisto = extractHistograms('data/set_test', 4000, 45, 9)
+	testFlipzones = extractFlipSim('data/set_test')
+	blackzone = extractBlackzones('data/set_train',nPartitions=3)
+	testGrayzone = extractColoredZone3D('data/set_test', 450, 800, 8)
+	testHippocMedian = extractHippocampusMedians('data/set_test')
+	testHippocMean = extractHippocampusMeans('data/set_test')
+	testHippocVar = extractHippocampusVars('data/set_test')
+	testHippocHisto = extractHippocampusHistograms('data/set_test')
+
+	allTestFeatures.append(testHisto)
+	allTestFeatures.append(testFlipzones)
+	allTestFeatures.append(blackzone)
+	#allTestFeatures.append(whitegray)
+	allTestFeatures.append(testGrayzone)
+	allTestFeatures.append(testHippocVar)
+	allTestFeatures.append(testHippocMean)
+	allTestFeatures.append(testHippocMedian)
+	allTestFeatures.append(testHippocHisto)
+
+
+	# ==========================================
+	# 				 PIPELINES
+	# ==========================================
+
+	allPipelines = []
+
+	histoPipeline = pipeline.make_pipeline(PCA(n_components=1400), StandardScaler())
+	flipzonePipeline  = pipeline.make_pipeline(PCA(n_components=10))
+	blackzonePipeline = pipeline.make_pipeline(PCA(n_components=10))
+	grayzonePipeline  = pipeline.make_pipeline(PCA(n_components=10))
+	hippocVariancePipeline  = pipeline.make_pipeline(PCA(n_components=1))
+	hippocMeanPipeline  = pipeline.make_pipeline(PCA(n_components=1))
+	hippocMedianPipeline  = pipeline.make_pipeline(PCA(n_components=1))
+	hippocHistoPipeline  = pipeline.make_pipeline(PCA(n_components=10))
+
+
+	allPipelines.append(histoPipeline)
+	allPipelines.append(flipzonePipeline)
+	allPipelines.append(blackzonePipeline)
+	allPipelines.append(grayzonePipeline)
+	allPipelines.append(hippocVariancePipeline)
+	allPipelines.append(hippocMeanPipeline)
+	allPipelines.append(hippocMedianPipeline)
+	allPipelines.append(hippocHistoPipeline)
+
+	# ==========================================
+	# 				 CLASSIFIERS
+	# ==========================================
+
+	allClassifiers = []
+	classifier_names = []
+
+	gaussBased = OneVsRestClassifier(GaussianProcessClassifier(1.0 * RBF(1.0), warm_start=True))
+	logBased = OneVsRestClassifier(LogisticRegression())
+	rforestBased = OneVsRestClassifier(RandomForestClassifier(max_depth=30,n_estimators=200))
+	mlpBased = OneVsRestClassifier(MLPClassifier(alpha=1))
+
+	allClassifiers.append(gaussBased)
+	classifier_names.append("Gaussian Process base")
+	allClassifiers.append(logBased)
+	classifier_names.append("Logistic Regression base")
+	allClassifiers.append(rforestBased)
+	classifier_names.append("Random Forest base")
+	allClassifiers.append(mlpBased)
+	classifier_names.append("MLP base")
+
+	votingClassifier = createVotingClassifier(allFeatures,allPipelines,classifier_names,allClassifiers)
+	votingClassifier.fit(allFeatures,targets)
+
+
+	# ==========================================
+	#				PREDICTIONS
+	# ==========================================
+
+	createPredictions(allTestFeatures, votingClassifier)
+
+
+
+
+
+
+# ===================================================================================================
+#				  					        HELPER FUNCTIONS
+# ===================================================================================================
 
 # Create a voting classifier from several classifiers for EACH feature, then
 # create a voting classifier from these feature-specific classifiers
@@ -129,125 +257,79 @@ def createPredictions(testFeatures, weightedVotingClassifier):
 				id+=1
 		csvfile.close()
 
+
+# 	PLOT IMAGES FOR VISUALIZATION
+'''
+
+figure = plt.figure(figsize=(27, 9))
+i = 1
+# iterate over datasets
+for ds_cnt, ds in enumerate(datasets):
+    # preprocess dataset, split into training and test part
+    X, y = ds
+    X = StandardScaler().fit_transform(X)
+    X_train, X_test, y_train, y_test = \
+        train_test_split(X, y, test_size=.4, random_state=42)
+
+    x_min, x_max = X[:, 0].min() - .5, X[:, 0].max() + .5
+    y_min, y_max = X[:, 1].min() - .5, X[:, 1].max() + .5
+    xx, yy = np.meshgrid(np.arange(x_min, x_max, h),
+                         np.arange(y_min, y_max, h))
+
+    # just plot the dataset first
+    cm = plt.cm.RdBu
+    cm_bright = ListedColormap(['#FF0000', '#0000FF'])
+    ax = plt.subplot(len(datasets), len(classifiers) + 1, i)
+    if ds_cnt == 0:
+        ax.set_title("Input data")
+    # Plot the training points
+    ax.scatter(X_train[:, 0], X_train[:, 1], c=y_train, cmap=cm_bright)
+    # and testing points
+    ax.scatter(X_test[:, 0], X_test[:, 1], c=y_test, cmap=cm_bright, alpha=0.6)
+    ax.scatter(X[:, 0], X[:, 1], c=y, cmap=cm_bright)
+    # and testing points
+    ax.scatter(X[:, 0], X[:, 1], c=y, cmap=cm_bright, alpha=0.6)
+    ax.set_xlim(xx.min(), xx.max())
+    ax.set_ylim(yy.min(), yy.max())
+    ax.set_xticks(())
+    ax.set_yticks(())
+    i += 1
+
+    # iterate over classifiers
+    for name, clf in zip(names, classifiers):
+        ax = plt.subplot(len(datasets), len(classifiers) + 1, i)
+        score = cross_val_score(clf, X, y, cv=10, scoring='neg_log_loss', n_jobs=-1)#clf.score(X_test, y_test)
+        clf.fit(X, y)
+
+        # Plot the decision boundary. For that, we will assign a color to each
+        # point in the mesh [x_min, x_max]x[y_min, y_max].
+        if hasattr(clf, "decision_function"):
+            Z = clf.decision_function(np.c_[xx.ravel(), yy.ravel()])
+        else:
+            Z = clf.predict_proba(np.c_[xx.ravel(), yy.ravel()])[:, 1]
+
+        # Put the result into a color plot
+        Z = Z.reshape(xx.shape)
+        ax.contourf(xx, yy, Z, cmap=cm, alpha=.8)
+
+        # Plot also the training points
+        ax.scatter(X[:, 0], X[:, 1], c=y, cmap=cm_bright)
+        # and testing points
+        ax.scatter(X[:, 0], X[:, 1], c=y, cmap=cm_bright,
+                   alpha=0.6)
+
+        ax.set_xlim(xx.min(), xx.max())
+        ax.set_ylim(yy.min(), yy.max())
+        ax.set_xticks(())
+        ax.set_yticks(())
+        if ds_cnt == 0:
+            ax.set_title(name)
+        ax.text(xx.max() - .3, yy.min() + .3, ('%.2f' % -score.mean()).lstrip('0'),
+                size=15, horizontalalignment='right')
+        i += 1
+
+plt.tight_layout()
+plt.show()
+
 	
-
-# ==========================================
-#				   TARGETS
-# ==========================================
-
-# Get the targets
-with open('data/targets.csv', 'rb') as f:
-    reader = csv.reader(f)
-    targets = list(reader)
-
-targets = np.array(targets).astype(np.int)
-targets_sex, targets_age, targets_health = zip(*targets) 
-
-# ==========================================
-#				 TRAIN FEATURES
-# ==========================================
-# TO BE ADDED: Gray white ratio; black zones from center of brain
-
-allFeatures = []
-
-histo = extractHistograms('data/set_train', 4000, 45, 9)
-flipzones = extractFlipSim('data/set_train')
-blackzone = extractBlackzones('data/set_train',nPartitions=3)
-grayzone = extractColoredZone3D('data/set_train', 450, 800, 8)
-hippocMedian = extractHippocampusMedians('data/set_train')
-hippocMean = extractHippocampusMeans('data/set_train')
-hippocVar = extractHippocampusVars('data/set_train')
-hippocHisto = extractHippocampusHistograms('data/set_train')
-
-allFeatures.append(histo)
-allFeatures.append(flipzones)
-allFeatures.append(blackzone)
-#allFeatures.append(whitegray)
-allFeatures.append(grayzone)
-allFeatures.append(hippocVar)
-allFeatures.append(hippocMean)
-allFeatures.append(hippocMedian)
-allFeatures.append(hippocHisto)
-
-# ==========================================
-#				  TEST FEATURES
-# ==========================================
-# TO BE ADDED: Gray white ratio; black zones from center of brain
-
-allTestFeatures = []
-
-testHisto = extractHistograms('data/set_test', 4000, 45, 9)
-testFlipzones = extractFlipSim('data/set_test')
-blackzone = extractBlackzones('data/set_train',nPartitions=3)
-testGrayzone = extractColoredZone3D('data/set_test', 450, 800, 8)
-testHippocMedian = extractHippocampusMedians('data/set_test')
-testHippocMean = extractHippocampusMeans('data/set_test')
-testHippocVar = extractHippocampusVars('data/set_test')
-testHippocHisto = extractHippocampusHistograms('data/set_test')
-
-allTestFeatures.append(testHisto)
-allTestFeatures.append(testFlipzones)
-allTestFeatures.append(blackzone)
-#allTestFeatures.append(whitegray)
-allTestFeatures.append(testGrayzone)
-allTestFeatures.append(testHippocVar)
-allTestFeatures.append(testHippocMean)
-allTestFeatures.append(testHippocMedian)
-allTestFeatures.append(testHippocHisto)
-
-
-# ==========================================
-# 				 PIPELINES
-# ==========================================
-
-allPipelines = []
-
-histoPipeline = pipeline.make_pipeline(PCA(n_components=1400), StandardScaler())
-flipzonePipeline  = pipeline.make_pipeline(PCA(n_components=10))
-blackzonePipeline = pipeline.make_pipeline(PCA(n_components=10))
-grayzonePipeline  = pipeline.make_pipeline(PCA(n_components=10))
-hippocVariancePipeline  = pipeline.make_pipeline(PCA(n_components=1))
-hippocMeanPipeline  = pipeline.make_pipeline(PCA(n_components=1))
-hippocMedianPipeline  = pipeline.make_pipeline(PCA(n_components=1))
-hippocHistoPipeline  = pipeline.make_pipeline(PCA(n_components=10))
-
-
-allPipelines.append(histoPipeline)
-allPipelines.append(flipzonePipeline)
-allPipelines.append(blackzonePipeline)
-allPipelines.append(grayzonePipeline)
-allPipelines.append(hippocVariancePipeline)
-allPipelines.append(hippocMeanPipeline)
-allPipelines.append(hippocMedianPipeline)
-allPipelines.append(hippocHistoPipeline)
-
-# ==========================================
-# 				 CLASSIFIERS
-# ==========================================
-
-allClassifiers = []
-classifier_names = []
-
-gaussBased = OneVsRestClassifier(GaussianProcessClassifier(1.0 * RBF(1.0), warm_start=True))
-logBased = OneVsRestClassifier(LogisticRegression())
-rforestBased = OneVsRestClassifier(RandomForestClassifier(max_depth=30,n_estimators=200))
-mlpBased = OneVsRestClassifier(MLPClassifier(alpha=1))
-
-allClassifiers.append(gaussBased)
-classifier_names.append("Gaussian Process base")
-allClassifiers.append(logBased)
-classifier_names.append("Logistic Regression base")
-allClassifiers.append(rforestBased)
-classifier_names.append("Random Forest base")
-allClassifiers.append(mlpBased)
-classifier_names.append("MLP base")
-
-votingClassifier = createVotingClassifier(allFeatures,allPipelines,classifier_names,allClassifiers)
-votingClassifier.fit(allFeatures,targets)
-
-
-# ==========================================
-#				PREDICTIONS
-# ==========================================
-
-createPredictions(allTestFeatures, votingClassifier)
+'''
