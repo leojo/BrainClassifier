@@ -33,6 +33,12 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.feature_selection import SelectKBest
 
+import matplotlib.pyplot as plt
+from sklearn.datasets import make_multilabel_classification
+from sklearn.preprocessing import LabelBinarizer
+from sklearn.cross_decomposition import CCA
+
+
 '''
 Template for predict_final.py
 
@@ -127,78 +133,90 @@ def createPredictions(testFeatures, weightedVotingClassifier):
 				id+=1
 		csvfile.close()
 
-def plotImages(datasets, classifiers, names):
-	figure = plt.figure(figsize=(27, 9))
-	i = 1
-	# iterate over datasets
-	for ds_cnt, ds in enumerate(datasets):
-	    # preprocess dataset, split into training and test part
-	    X, y = ds
-	    X = StandardScaler().fit_transform(X)
-	    X_train, X_test, y_train, y_test = \
-	        train_test_split(X, y, test_size=.4, random_state=42)
 
-	    x_min, x_max = X[:, 0].min() - .5, X[:, 0].max() + .5
-	    y_min, y_max = X[:, 1].min() - .5, X[:, 1].max() + .5
-	    xx, yy = np.meshgrid(np.arange(x_min, x_max, h),
-	                         np.arange(y_min, y_max, h))
+def plot_hyperplane(clf, min_x, max_x, linestyle, label, col):
+    # get the separating hyperplane
+    w = clf.coef_[0]
+    a = -w[0] / w[1]
+    xx = np.linspace(min_x - 5, max_x + 5)  # make sure the line is long enough
+    yy = a * xx - (clf.intercept_[0]) / w[1]
+    plt.plot(xx, yy, linestyle, label=label, color=col)
 
-	    # just plot the dataset first
-	    cm = plt.cm.RdBu
-	    cm_bright = ListedColormap(['#FF0000', '#0000FF'])
-	    ax = plt.subplot(len(datasets), len(classifiers) + 1, i)
-	    if ds_cnt == 0:
-	        ax.set_title("Input data")
-	    ### Plot the training points
-	    ### ax.scatter(X_train[:, 0], X_train[:, 1], c=y_train, cmap=cm_bright)
-	    ### and testing points
-	    ### ax.scatter(X_test[:, 0], X_test[:, 1], c=y_test, cmap=cm_bright, alpha=0.6)
-	    ax.scatter(X[:, 0], X[:, 1], c=y, cmap=cm_bright)
-	    # and testing points
-	    ax.scatter(X[:, 0], X[:, 1], c=y, cmap=cm_bright, alpha=0.6)
-	    ax.set_xlim(xx.min(), xx.max())
-	    ax.set_ylim(yy.min(), yy.max())
-	    ax.set_xticks(())
-	    ax.set_yticks(())
-	    i += 1
 
-	    # iterate over classifiers
-	    for name, clf in zip(names, classifiers):
-	        ax = plt.subplot(len(datasets), len(classifiers) + 1, i)
-	        score = cross_val_score(clf, X, y, cv=10, scoring='neg_log_loss', n_jobs=-1)#clf.score(X_test, y_test)
-	        clf.fit(X, y)
+def plot_subfigure(X, Y, subplot, title, transform, classif):
+    if transform == "pca":
+        X = PCA(n_components=2).fit_transform(X)
+    elif transform == "cca":
+        X = CCA(n_components=2).fit(X, Y).transform(X)
+    else:
+        raise ValueError
 
-	        # Plot the decision boundary. For that, we will assign a color to each
-	        # point in the mesh [x_min, x_max]x[y_min, y_max].
-	        if hasattr(clf, "decision_function"):
-	            Z = clf.decision_function(np.c_[xx.ravel(), yy.ravel()])
-	        else:
-	            Z = clf.predict_proba(np.c_[xx.ravel(), yy.ravel()])[:, 1]
+    min_x = np.min(X[:, 0])
+    max_x = np.max(X[:, 0])
 
-	        # Put the result into a color plot
-	        Z = Z.reshape(xx.shape)
-	        ax.contourf(xx, yy, Z, cmap=cm, alpha=.8)
+    min_y = np.min(X[:, 1])
+    max_y = np.max(X[:, 1])
 
-	        # Plot also the training points
-	        ax.scatter(X[:, 0], X[:, 1], c=y, cmap=cm_bright)
-	        # and testing points
-	        ax.scatter(X[:, 0], X[:, 1], c=y, cmap=cm_bright,
-	                   alpha=0.6)
+    #classif = OneVsRestClassifier(SVC(kernel='linear'))
+    print Y.shape
+    print X.shape
+    classif.fit(X, Y)
+    plt.subplot(1, 1, subplot)
+    plt.title(title)
 
-	        ax.set_xlim(xx.min(), xx.max())
-	        ax.set_ylim(yy.min(), yy.max())
-	        ax.set_xticks(())
-	        ax.set_yticks(())
-	        if ds_cnt == 0:
-	            ax.set_title(name)
-	        ax.text(xx.max() - .3, yy.min() + .3, ('%.2f' % -score.mean()).lstrip('0'),
-	                size=15, horizontalalignment='right')
-	        i += 1
+    zero_class = np.where(Y[:, 0])
+    zero_not_class = np.where(1-Y[:, 0])
+    one_class = np.where(Y[:, 1])
+    one_not_class = np.where(1-Y[:, 1])
+    two_class = np.where(Y[:, 2])
+    two_not_class = np.where(1-Y[:, 2])
+    plt.scatter(X[:, 0], X[:, 1], s=40, c='gray')
+    plt.scatter(X[zero_class, 0], X[zero_class, 1], edgecolors='black',
+               facecolors='black', linewidths=2, label='Class 1')
+    plt.scatter(X[zero_not_class, 0], X[zero_not_class, 1], edgecolors='orange',
+               facecolors='orange', linewidths=2, label='Class 1')
+    plt.scatter(X[one_class, 0], X[one_class, 1], s=500, edgecolors='green',
+               facecolors='none', linewidths=2, label='Class 2')
+    plt.scatter(X[two_class, 0], X[two_class, 1], s=340, edgecolors='red', marker='<',
+               facecolors='none', linewidths=2, label='Class 3')
+    plt.scatter(X[two_not_class, 0], X[two_not_class, 1], s=300, edgecolors='blue', marker='>',
+               facecolors='none', linewidths=2, label='Class 3')
 
-	plt.tight_layout()
-	plt.show()
 
-	# ===================================================================================================
+    plot_hyperplane(classif.estimators_[0], min_x, max_x, 'k-.',
+                    'Boundary\nfor class 1', 'orange')
+    plot_hyperplane(classif.estimators_[1], min_x, max_x, 'ko',
+                    'Boundary\nfor class 2', 'green')
+    plot_hyperplane(classif.estimators_[2], min_x, max_x, 'k>',
+                    'Boundary\nfor class 3', 'blue')
+
+
+
+    plt.xticks(())
+    plt.yticks(())
+
+    plt.xlim(min_x - .5 * max_x, max_x + .5 * max_x)
+    plt.ylim(min_y - .5 * max_y, max_y + .5 * max_y)
+    if subplot == 2:
+        plt.xlabel('First principal component')
+        plt.ylabel('Second principal component')
+        plt.legend(loc="upper left")
+
+def makePlot(X, Y, classif, plotNum):
+
+    plt.figure(figsize=(8, 6))
+
+    #plot_subfigure(X, Y, plotNum, "Without unlabeled samples + CCA", "cca", classif)
+    plot_subfigure(X, Y, plotNum, "Without unlabeled samples + PCA", "pca", classif)
+    
+    plt.subplots_adjust(.04, .02, .97, .94, .09, .2)
+    plt.show()
+
+def makeAllPlots(allX, Y, classif):
+	for i in range(0, len(allX)):
+		makePlot(allX[i], Y, classif, 1)
+
+# ===================================================================================================
 #				  					        MAIN FUNCTIONALITY
 # ===================================================================================================
 
@@ -323,7 +341,7 @@ if __name__=="__main__":
 	# ==========================================
 	#				PREDICTIONS
 	# ==========================================
-	if(shouldPlot): plotImages(allFeatures, allClassifiers, classifier_names)
+	if(shouldPlot): makeAllPlots(allFeatures, targets,OneVsRestClassifier(LogisticRegression()))
 
 	createPredictions(allTestFeatures, votingClassifier)
 

@@ -1,0 +1,40 @@
+1   A, B, C, D, E, F
+2
+3
+4
+5
+6
+
+Label 1:
+
+A, C, D
+2, 5
+
+=> Voting classifier VC1
+
+Label 2:
+
+D, E
+3, 4, 5
+
+=> Voting Classifier VC2
+
+Label 3:
+
+F
+1, 2
+
+=> Voting Classifier VC3 
+
+
+predict proba, venjulega loss functið
+
+
+
+CustomVotingClassifier:
+
+VC1, VC2, VC3, f1, p1, f2, p2, f3, p3
+
+= VOTINGCLASSIFIER
+
+predictions 3 labela => Hamming loss
