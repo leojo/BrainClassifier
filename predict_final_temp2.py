@@ -11,10 +11,12 @@ from sklearn.feature_selection import SelectKBest
 from sklearn.metrics import make_scorer
 from sklearn.model_selection import cross_val_score
 from sklearn.multiclass import OneVsRestClassifier
+from sklearn.linear_model import LogisticRegression
 
 from Features.extract_features import *
 from Features.scoring import hammingLoss
 from Features.scoring import partialHammingLoss
+from MultiLabelVotingClassifier import MultiLabelVotingClassifier
 
 
 # IMPORT SEM THARF AD TAKA TIL I THEGAR VID VITUM HVADA STUFF VID VILJUM NOTA
@@ -50,33 +52,24 @@ Goal:
 #				  HELPER FUNCTIONS
 # ==========================================
 
-def getBestFeatures(classLabel):
-	bestFeatures = []
-	correspondingPipelines = []
-
-	minVariance = 0
-	for i in range(0, bestFeatures.size()):
-		var = calculateVariance(allFeatures[i], classLabel)
-		if var > minVariance:
-			bestFeatures.append(allFeatures[i])
-			correspondingPipelines.append(allPipelines[i])
-
-	return [bestFeatures, correspondingPipelines]
-
-def calculateVariance(feature, classLabel): 
-	return
-
 
 # Create a voting classifier from several classifiers for EACH feature, then
 # create a voting classifier from these feature-specific classifiers
-def createVotingClassifier(classLabel, features, pipelines, names, classifiers):
+def createVotingClassifier(features, pipelines, names, classifiers):
+	outputFileName = "votingClassifier1.classifier"
+	if os.path.isfile(outputFileName):
+		print "Found classifier save:",outputFileName
+		save = open(outputFileName,'rb')
+		save_data = pickle.load(save)
+		votingClassifier = MultiLabelVotingClassifier(save_data[0],voting="hard", weights=save_data[1], separateFeatures = True)
+		save.close()
+		return votingClassifier
+
 	voterWeights = []
 	voters = []
 	# Create a model for each kind of feature and preprocessing pipeline for that feature:
 	for feature, preproc in zip(features, pipelines):
-		
-		print "Shape of feature:",np.asarray(feature).shape
-		print "Shape of targets:",targets[:,classLabel].shape
+
 		# We want the model to be a voter combined from several classifiers:
 		weights = []
 		for name, classifier in zip(names,classifiers):
@@ -85,38 +78,41 @@ def createVotingClassifier(classLabel, features, pipelines, names, classifiers):
 				preproc,
 				classifier)
 
-			scorer = make_scorer(partialHammingLoss,greater_is_better=False)
-			scores = cross_val_score(pl, feature, targets[:,classLabel], cv=10, scoring=scorer, n_jobs=1)
+			scorer = make_scorer(hammingLoss,greater_is_better=False)
+			scores = cross_val_score(pl, feature, targets, cv=10, scoring=scorer, n_jobs=1)
 			print "score: %0.2f (+/- %0.2f) [%s]" % (-scores.mean(), scores.std(),name)
 			weights.append(1.0/(-scores.mean()))
 
 		model = pipeline.make_pipeline(
 				preproc,
-				VotingClassifier(zip(names,classifiers), voting='soft', weights=weights ,n_jobs=1)
+				MultiLabelVotingClassifier(classifiers, voting='soft', weights=weights)
 				)
 
 		print "\nCalculating score of model:"
-		scorer = make_scorer(partialHammingLoss,greater_is_better=False)
-		scores = cross_val_score(model, feature, targets[:,classLabel], cv=10, scoring=scorer, n_jobs=1)
+		scorer = make_scorer(hammingLoss,greater_is_better=False)
+		scores = cross_val_score(model, feature, targets, cv=10, scoring=scorer, n_jobs=1)
 		print "score: %0.2f (+/- %0.2f) [%s]" % (-scores.mean(), scores.std(),"VotingClassifier")
-		model.fit(feature,targets[:,classLabel])
 		voterWeights.append(1.0/(-scores.mean()))
 		voters.append(model)
-	return np.array(zip(voters,voterWeights)) # Since the voters in this "model" require different feature-preprocessing it must be used manually
+	print "!!!!!!!!!!!!!!!!!!! Creating final classifier !!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+	save_data = [voters,voterWeights]
+	votingClassifier = MultiLabelVotingClassifier(save_data[0],voting="hard", weights=save_data[1], separateFeatures = True)
+	#scorer = make_scorer(hammingLoss,greater_is_better=False)
+	#scores = cross_val_score(votingClassifier, features, targets, cv=10, scoring=scorer, n_jobs=1)
+	#print "!!!!!!!!!!!!!!!!!!! Score of final classifier !!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+	#print "score: %0.2f (+/- %0.2f) [%s]" % (-scores.mean(), scores.std(),"VotingClassifier")
+	print "\nStoring the classifier in "+outputFileName
+	output = open(outputFileName,"wb")
+	pickle.dump(save_data,output)
+	output.close()
+	print "Done"
+	return votingClassifier
+
 	
-def createPredictions(testFeatures, sexWeightedVoters, ageWeightedVoters, healthWeightedVoters):
+def createPredictions(testFeatures, weightedVotingClassifier):
 	numTestSamples = np.asarray(testFeatures[0]).shape[0]
-	predictions = []
-	for weightedVoters in [sexWeightedVoters,ageWeightedVoters,healthWeightedVoters]:
-		totalWeight = np.sum(weightedVoters[:,1])
-		totalPrediction = np.array([0]*numTestSamples).astype(np.float)
-		for feature,voter,weight in zip(testFeatures,*zip(*weightedVoters)):
-			prediction0, prediction1 = zip(*voter.predict_proba(feature))
-			print "Shape of prediction:",np.array(prediction1).shape
-			totalPrediction += np.array(prediction1).astype(np.float)*float(weight)/float(totalWeight)
-		totalPrediction = np.round(totalPrediction)
-		predictions.append(totalPrediction.tolist())
-	
+	predictions = weightedVotingClassifier.predict(testFeatures)
+
 	id = 0
 	resultFileName = 'submission'
 	if len(sys.argv) == 2:
@@ -126,7 +122,7 @@ def createPredictions(testFeatures, sexWeightedVoters, ageWeightedVoters, health
 	with open(resultFileName, 'w') as csvfile:
 		resultWriter = csv.writer(csvfile, delimiter=',', quotechar='|')
 		resultWriter.writerow(['ID','Sample','Label','Predicted'])
-		for sample_no, sample in enumerate(zip(*predictions)):
+		for sample_no, sample in enumerate(predictions):
 			for label, prediction in zip(['gender','age','health'],[bool(sample[0]),bool(sample[1]),bool(sample[2])]):
 				row=[id,sample_no,label,prediction]
 				resultWriter.writerow(row)
@@ -154,18 +150,18 @@ targets_sex, targets_age, targets_health = zip(*targets)
 
 allFeatures = []
 
-### histo = extractHistograms('data/set_train', 4000, 45, 9)
+histo = extractHistograms('data/set_train', 4000, 45, 9)
 flipzones = extractFlipSim('data/set_train')
-#blackzone = extractColoredZone('data/set_train', )
-grayzone = extractColoredZone('data/set_train', 450, 800, 8)
+blackzone = extractBlackzones('data/set_train',nPartitions=3)
+grayzone = extractColoredZone3D('data/set_train', 450, 800, 8)
 hippocMedian = extractHippocampusMedians('data/set_train')
 hippocMean = extractHippocampusMeans('data/set_train')
 hippocVar = extractHippocampusVars('data/set_train')
 hippocHisto = extractHippocampusHistograms('data/set_train')
 
-### allFeatures.append(histo)
+allFeatures.append(histo)
 allFeatures.append(flipzones)
-#allFeatures.append(blackzone)
+allFeatures.append(blackzone)
 #allFeatures.append(whitegray)
 allFeatures.append(grayzone)
 allFeatures.append(hippocVar)
@@ -180,24 +176,18 @@ allFeatures.append(hippocHisto)
 
 allTestFeatures = []
 
-### testHisto = extractHistograms('data/set_test', 4000, 45, 9)
+testHisto = extractHistograms('data/set_test', 4000, 45, 9)
 testFlipzones = extractFlipSim('data/set_test')
-print "Shape of testFlipzones:",np.asarray(testFlipzones).shape
-#blackzone = extractColoredZone('data/set_train', )
-testGrayzone = extractColoredZone('data/set_test', 450, 800, 8)
-print "Shape of testGrayzone:",np.asarray(testGrayzone).shape
+blackzone = extractBlackzones('data/set_train',nPartitions=3)
+testGrayzone = extractColoredZone3D('data/set_test', 450, 800, 8)
 testHippocMedian = extractHippocampusMedians('data/set_test')
-print "Shape of testHippocMedian:",np.asarray(testHippocMedian).shape
 testHippocMean = extractHippocampusMeans('data/set_test')
-print "Shape of testHippocMean:",np.asarray(testHippocMean).shape
 testHippocVar = extractHippocampusVars('data/set_test')
-print "Shape of testHippocVar:",np.asarray(testHippocVar).shape
 testHippocHisto = extractHippocampusHistograms('data/set_test')
-print "Shape of testHippocHisto:",np.asarray(testHippocHisto).shape
 
-### allTestFeatures.append(testHisto)
+allTestFeatures.append(testHisto)
 allTestFeatures.append(testFlipzones)
-#allTestFeatures.append(blackzone)
+allTestFeatures.append(blackzone)
 #allTestFeatures.append(whitegray)
 allTestFeatures.append(testGrayzone)
 allTestFeatures.append(testHippocVar)
@@ -212,85 +202,52 @@ allTestFeatures.append(testHippocHisto)
 
 allPipelines = []
 
-### histoPipeline = pipeline.make_pipeline(PCA(n_components=1400), StandardScaler())
+histoPipeline = pipeline.make_pipeline(PCA(n_components=1400), StandardScaler())
 flipzonePipeline  = pipeline.make_pipeline(PCA(n_components=10))
-#blackzonePipeline 
-grayzonePipeline  = pipeline.make_pipeline(PCA(n_components=100))
+blackzonePipeline = pipeline.make_pipeline(PCA(n_components=10))
+grayzonePipeline  = pipeline.make_pipeline(PCA(n_components=10))
 hippocVariancePipeline  = pipeline.make_pipeline(PCA(n_components=1))
 hippocMeanPipeline  = pipeline.make_pipeline(PCA(n_components=1))
 hippocMedianPipeline  = pipeline.make_pipeline(PCA(n_components=1))
 hippocHistoPipeline  = pipeline.make_pipeline(PCA(n_components=10))
 
 
-### allPipelines.append(histoPipeline)
+allPipelines.append(histoPipeline)
 allPipelines.append(flipzonePipeline)
-#allPipelines.append(blackzonePipeline)
+allPipelines.append(blackzonePipeline)
 allPipelines.append(grayzonePipeline)
 allPipelines.append(hippocVariancePipeline)
 allPipelines.append(hippocMeanPipeline)
 allPipelines.append(hippocMedianPipeline)
 allPipelines.append(hippocHistoPipeline)
 
-
-
 # ==========================================
-#				    SEX
+# 				 CLASSIFIERS
 # ==========================================
 
-print "SEX!!!!!!!!!!!!!!!!"
-# ------------- CLASSIFIERS
-sexClassifierNames = ["RandomForestClassifier", "linear SVC", "Gaussian Process", "Neural Net",]
-sexClassifiers = [
-	RandomForestClassifier(max_depth=30,n_estimators=200),
-	#SVC(kernel="linear", C=1.0, probability=True),
-	GaussianProcessClassifier(1.0 * RBF(1.0), warm_start=True),
-	MLPClassifier(alpha=1),
-]
+allClassifiers = []
+classifier_names = []
 
-# This call will also print cross val score for each classifier and a score for the voting classifiers
-sexClassifier = createVotingClassifier(0, allFeatures, allPipelines, sexClassifierNames, sexClassifiers)
+gaussBased = OneVsRestClassifier(GaussianProcessClassifier(1.0 * RBF(1.0), warm_start=True))
+logBased = OneVsRestClassifier(LogisticRegression())
+rforestBased = OneVsRestClassifier(RandomForestClassifier(max_depth=30,n_estimators=200))
+mlpBased = OneVsRestClassifier(MLPClassifier(alpha=1))
 
+allClassifiers.append(gaussBased)
+classifier_names.append("Gaussian Process base")
+allClassifiers.append(logBased)
+classifier_names.append("Logistic Regression base")
+allClassifiers.append(rforestBased)
+classifier_names.append("Random Forest base")
+allClassifiers.append(mlpBased)
+classifier_names.append("MLP base")
 
-
-# ==========================================
-#				    AGE
-# ==========================================
-print "AGE!!!!!!!!!!!!!!!!"
-
-# ------------- CLASSIFIERS
-ageClassifierNames = ["RandomForestClassifier", "linear SVC", "Gaussian Process", "Neural Net",]
-ageClassifiers = [
-	RandomForestClassifier(max_depth=30,n_estimators=200),
-	#SVC(kernel="linear", C=1.0, probability=True),
-	GaussianProcessClassifier(1.0 * RBF(1.0), warm_start=True),
-	MLPClassifier(alpha=1),
-]
-
-# This call will also print cross val score for each classifier and a score for the voting classifier
-ageClassifier = createVotingClassifier(1, allFeatures, allPipelines, ageClassifierNames, ageClassifiers)
-
-
-# ==========================================
-#				    HEALTH
-# ==========================================
-print "HEALTH!!!!!!!!!!!!!!!!"
-
-# ------------- CLASSIFIERS
-healthClassifierNames = ["RandomForestClassifier", "linear SVC", "Gaussian Process", "Neural Net",]
-healthClassifiers = [
-	RandomForestClassifier(max_depth=30,n_estimators=200),
-	#SVC(kernel="linear", C=1.0, probability=True),
-	GaussianProcessClassifier(1.0 * RBF(1.0), warm_start=True),
-	MLPClassifier(alpha=1),
-]
-
-# This call will also print cross val score for each classifier and a score for the voting classifier
-healthClassifier = createVotingClassifier(2, allFeatures, allPipelines, healthClassifierNames, healthClassifiers)
-
+votingClassifier = createVotingClassifier(allFeatures,allPipelines,classifier_names,allClassifiers)
+votingClassifier.fit(allFeatures,targets)
 
 
 # ==========================================
 #				PREDICTIONS
 # ==========================================
 
-createPredictions(allTestFeatures, sexClassifier, ageClassifier, healthClassifier)
+createPredictions(allTestFeatures, votingClassifier)

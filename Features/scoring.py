@@ -12,3 +12,12 @@ def hammingLoss(y_pred,y):
 			sum += diff
 	sum /= L*D
 	return sum
+
+def partialHammingLoss(y_pred,y):
+	D = y.shape[0]
+	sum = 0.0
+	for i in range(D):
+		diff = abs(y_pred[i]-y[i])
+		sum += diff
+	sum /= D
+	return sum

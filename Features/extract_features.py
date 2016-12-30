@@ -27,11 +27,15 @@ def extractHistograms(imgDir, maxValue = 4000, nBins = -1, nPartitions = 1):
 
 	# This is the cache for the feature, used to make sure we do the heavy computations more often than necessary
 	outputFileName = os.path.join(featuresDir,"histograms_"+str(nBins)+"-"+str(maxValue)+"-"+str(nPartitions)+"_"+imgDir.replace(os.sep,"-")+".feature")
+	print "Looking for file",outputFileName
 	if os.path.isfile(outputFileName):
+		print "Found file, loading..."
 		save = open(outputFileName,'rb')
 		histograms = pickle.load(save)
 		save.close()
+		print "Done"
 		return histograms
+	print "Could not find file"
 
 	# Fetch all directory listings of set_train and sort them on the image number
 	allImageSrc = sorted(glob.glob(imgPath), key=extractImgNumber)
@@ -775,7 +779,7 @@ def extractHippocampi(imgDir):
 	imgPath = os.path.join(imgDir,"*")
 
 	# This is the cache for the feature, used to make sure we do the heavy computations more often than necessary
-	outputFileName = os.path.join(featuresDir,"hippocampi_raw.feature")
+	outputFileName = os.path.join(featuresDir,"hippocampi_raw"+imgDir.replace(os.sep,"-")+".feature")
 	if os.path.isfile(outputFileName):
 		save = open(outputFileName,'rb')
 		hippocampi = pickle.load(save)
@@ -821,12 +825,17 @@ def extractHippocampi(imgDir):
 
 def extractHippocampusMeans(imgDir):
 	hippocampi = extractHippocampi(imgDir)
-	return np.mean(hippocampi,axis=1)
+	return np.mean(hippocampi,axis=1).reshape(-1,1)
 	
 def extractHippocampusVars(imgDir):
 	hippocampi = extractHippocampi(imgDir)
-	return np.var(hippocampi,axis=1)
+	return np.var(hippocampi,axis=1).reshape(-1,1)
 	
+	
+def extractHippocampusMedians(imgDir):
+	hippocampi = extractHippocampi(imgDir)
+	return np.median(hippocampi,axis=1).reshape(-1,1)
+
 def extractHippocampusHistograms(imgDir,maxValue=4000,bins=45):
 	hippocampi = extractHippocampi(imgDir)
 	histograms = []
