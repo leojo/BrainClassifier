@@ -2,11 +2,14 @@ import csv
 import numpy as np
 
 from Features.extract_features import *
+from Features.scoring import hammingLoss
 
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import make_scorer
+from sklearn.model_selection import cross_val_score
 
 from multi_label_voting_classifier import MultiLabelVotingClassifier
 
@@ -29,6 +32,8 @@ XX_test = data1[-10:]
 X = [data1[:-10],data2[:-10],data3[:-10]]
 X_test = [data1[-10:],data2[-10:],data3[-10:]]
 
+data = [data1,data2,data3]
+
 names = ["LogisticRegression","SVC","DecisionTreeClassifier"]
 clf1 = OneVsRestClassifier(LogisticRegression())
 clf2 = OneVsRestClassifier(SVC(probability=True,kernel="linear"))
@@ -49,7 +54,7 @@ votingClassifierSoft.fit(X,y)
 votingClassifier2Hard.fit(XX,y)
 votingClassifier2Soft.fit(XX,y)
 
-print "votingClassifierHard:"
+print "\n\nvotingClassifierHard:"
 print "predict:",votingClassifierHard.predict(X_test)
 print"\nvotingClassifierSoft:"
 print "predict:",votingClassifierSoft.predict(X_test)
@@ -59,3 +64,8 @@ print "predict:",votingClassifier2Hard.predict(XX_test)
 print"\nvotingClassifier2Soft:"
 print "predict:",votingClassifier2Soft.predict(XX_test)
 print "predict_proba:",votingClassifier2Soft.predict_proba(XX_test)
+print "\n\n"
+
+scorer = make_scorer(hammingLoss,greater_is_better=False)
+scores = cross_val_score(votingClassifier2Soft, data1, targets, cv=10, scoring=scorer, n_jobs=1)
+print "score: %0.2f (+/- %0.2f) [%s]" % (-scores.mean(), scores.std(),"VotingClassifier")

@@ -299,9 +299,9 @@ class MultiLabelVotingClassifier(BaseEstimator, ClassifierMixin, TransformerMixi
 	def get_params(self, deep=True):
 		"""Return estimator parameter names for GridSearch support"""
 		if not deep:
-			return super(VotingClassifier, self).get_params(deep=False)
+			return super(MultiLabelVotingClassifier, self).get_params(deep=False)
 		else:
-			out = super(VotingClassifier, self).get_params(deep=False)
+			out = super(MultiLabelVotingClassifier, self).get_params(deep=False)
 			out.update(self.named_estimators.copy())
 			for name, step in six.iteritems(self.named_estimators):
 				for key, value in six.iteritems(step.get_params(deep=True)):
