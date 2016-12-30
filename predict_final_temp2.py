@@ -16,7 +16,7 @@ from sklearn.linear_model import LogisticRegression
 from Features.extract_features import *
 from Features.scoring import hammingLoss
 from Features.scoring import partialHammingLoss
-from MultiLabelVotingClassifier import MultiLabelVotingClassifier
+from multi_label_voting_classifier import MultiLabelVotingClassifier
 
 
 # IMPORT SEM THARF AD TAKA TIL I THEGAR VID VITUM HVADA STUFF VID VILJUM NOTA
@@ -113,10 +113,13 @@ def createVotingClassifier(features, pipelines, names, classifiers):
 	return votingClassifier
 
 	
-def createPredictions(testFeatures, weightedVotingClassifier):
+def createPredictions(testFeatures, sexModel, ageModel, healthModel):
 	numTestSamples = np.asarray(testFeatures[0]).shape[0]
-	predictions = weightedVotingClassifier.predict(testFeatures)
-
+	sexPredictions = sexModel[0].predict(testFeatures[sexModel[1]])
+	agePredictions = ageModel[0].predict(testFeatures[ageModel[1]])
+	healthPredictions = healthModel[0].predict(testFeatures[healthModel[1]])
+	predictions = zip(sexPredictions,agePredictions,healthPredictions)
+	print predictions
 	id = 0
 	resultFileName = 'submission'
 	if len(sys.argv) == 2:
@@ -251,8 +254,6 @@ def createSingleLabelVC(classLabel, features, pipelines, names, classifiers):
 		scores = cross_val_score(model, feature, targets[:,classLabel], cv=10, scoring=scorer, n_jobs=1)
 		print "score: %0.2f (+/- %0.2f) [%s]" % (-scores.mean(), scores.std(),"VotingClassifier")
 
-
-		#model.fit(feature,targets[:,classLabel])
 		#voterWeights.append(1.0/(-scores.mean()))
 		#voters.append(model)
 	#return np.array(zip(voters,voterWeights)) # Since the voters in this "model" require different feature-preprocessing it must be used manually
@@ -260,6 +261,7 @@ def createSingleLabelVC(classLabel, features, pipelines, names, classifiers):
 	# NOTE: Later on it would be better if we didn't return best, but a combination of the others, like before
 		if(-scores.mean() < bestVoterScore):
 			bestVoterScore = -scores.mean()
+			model.fit(feature,targets[:,classLabel])
 			bestVoter = [model, i]
 
 	return bestVoter
@@ -398,7 +400,6 @@ if __name__=="__main__":
 
 	ageModel = createSingleLabelVC(1, allFeatures, allPipelines, classifier_names, allClassifiers)
 
-
 	# ==========================================
 	# 				  HEALTH 
 	# ==========================================
@@ -407,11 +408,10 @@ if __name__=="__main__":
 	healthModel = createSingleLabelVC(2, allFeatures, allPipelines, classifier_names, allClassifiers)
 
 
-
 	# ==========================================
 	#				PREDICTIONS
 	# ==========================================
 	if(shouldPlot): makeAllPlots(allFeatures, targets,OneVsRestClassifier(LogisticRegression()))
 
-	createPredictions(allTestFeatures, votingClassifier)
+	createPredictions(allTestFeatures, sexModel, ageModel, healthModel)
 
