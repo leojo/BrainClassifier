@@ -48,10 +48,164 @@ Goal:
 '''
 
 # ===================================================================================================
+#				  					        HELPER FUNCTIONS
+# ===================================================================================================
+
+# Create a voting classifier from several classifiers for EACH feature, then
+# create a voting classifier from these feature-specific classifiers
+def createVotingClassifier(features, pipelines, names, classifiers):
+	outputFileName = "votingClassifier1.classifier"
+	if os.path.isfile(outputFileName):
+		print "Found classifier save:",outputFileName
+		save = open(outputFileName,'rb')
+		save_data = pickle.load(save)
+		votingClassifier = MultiLabelVotingClassifier(save_data[0],voting="hard", weights=save_data[1], separateFeatures = True)
+		save.close()
+		return votingClassifier
+
+	voterWeights = []
+	voters = []
+	# Create a model for each kind of feature and preprocessing pipeline for that feature:
+	for feature, preproc in zip(features, pipelines):
+
+		# We want the model to be a voter combined from several classifiers:
+		weights = []
+		for name, classifier in zip(names,classifiers):
+			print(name)
+			pl = pipeline.make_pipeline(
+				preproc,
+				classifier)
+
+			scorer = make_scorer(hammingLoss,greater_is_better=False)
+			scores = cross_val_score(pl, feature, targets, cv=10, scoring=scorer, n_jobs=1)
+			print "score: %0.2f (+/- %0.2f) [%s]" % (-scores.mean(), scores.std(),name)
+			weights.append(1.0/(-scores.mean()))
+
+		model = pipeline.make_pipeline(
+				preproc,
+				MultiLabelVotingClassifier(classifiers, voting='soft', weights=weights)
+				)
+
+		print "\nCalculating score of model:"
+		scorer = make_scorer(hammingLoss,greater_is_better=False)
+		scores = cross_val_score(model, feature, targets, cv=10, scoring=scorer, n_jobs=1)
+		print "score: %0.2f (+/- %0.2f) [%s]" % (-scores.mean(), scores.std(),"VotingClassifier")
+		voterWeights.append(1.0/(-scores.mean()))
+		voters.append(model)
+	print "!!!!!!!!!!!!!!!!!!! Creating final classifier !!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+	save_data = [voters,voterWeights]
+	votingClassifier = MultiLabelVotingClassifier(save_data[0],voting="hard", weights=save_data[1], separateFeatures = True)
+	#scorer = make_scorer(hammingLoss,greater_is_better=False)
+	#scores = cross_val_score(votingClassifier, features, targets, cv=10, scoring=scorer, n_jobs=1)
+	#print "!!!!!!!!!!!!!!!!!!! Score of final classifier !!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+	#print "score: %0.2f (+/- %0.2f) [%s]" % (-scores.mean(), scores.std(),"VotingClassifier")
+	print "\nStoring the classifier in "+outputFileName
+	output = open(outputFileName,"wb")
+	pickle.dump(save_data,output)
+	output.close()
+	print "Done"
+	return votingClassifier
+
+	
+def createPredictions(testFeatures, weightedVotingClassifier):
+	numTestSamples = np.asarray(testFeatures[0]).shape[0]
+	predictions = weightedVotingClassifier.predict(testFeatures)
+
+	id = 0
+	resultFileName = 'submission'
+	if len(sys.argv) == 2:
+		resultFileName = sys.argv[1]
+	if resultFileName[-4:] != ".csv":
+		resultFileName += ".csv"
+	with open(resultFileName, 'w') as csvfile:
+		resultWriter = csv.writer(csvfile, delimiter=',', quotechar='|')
+		resultWriter.writerow(['ID','Sample','Label','Predicted'])
+		for sample_no, sample in enumerate(predictions):
+			for label, prediction in zip(['gender','age','health'],[bool(sample[0]),bool(sample[1]),bool(sample[2])]):
+				row=[id,sample_no,label,prediction]
+				resultWriter.writerow(row)
+				id+=1
+		csvfile.close()
+
+def plotImages(datasets, classifiers, names):
+	figure = plt.figure(figsize=(27, 9))
+	i = 1
+	# iterate over datasets
+	for ds_cnt, ds in enumerate(datasets):
+	    # preprocess dataset, split into training and test part
+	    X, y = ds
+	    X = StandardScaler().fit_transform(X)
+	    X_train, X_test, y_train, y_test = \
+	        train_test_split(X, y, test_size=.4, random_state=42)
+
+	    x_min, x_max = X[:, 0].min() - .5, X[:, 0].max() + .5
+	    y_min, y_max = X[:, 1].min() - .5, X[:, 1].max() + .5
+	    xx, yy = np.meshgrid(np.arange(x_min, x_max, h),
+	                         np.arange(y_min, y_max, h))
+
+	    # just plot the dataset first
+	    cm = plt.cm.RdBu
+	    cm_bright = ListedColormap(['#FF0000', '#0000FF'])
+	    ax = plt.subplot(len(datasets), len(classifiers) + 1, i)
+	    if ds_cnt == 0:
+	        ax.set_title("Input data")
+	    ### Plot the training points
+	    ### ax.scatter(X_train[:, 0], X_train[:, 1], c=y_train, cmap=cm_bright)
+	    ### and testing points
+	    ### ax.scatter(X_test[:, 0], X_test[:, 1], c=y_test, cmap=cm_bright, alpha=0.6)
+	    ax.scatter(X[:, 0], X[:, 1], c=y, cmap=cm_bright)
+	    # and testing points
+	    ax.scatter(X[:, 0], X[:, 1], c=y, cmap=cm_bright, alpha=0.6)
+	    ax.set_xlim(xx.min(), xx.max())
+	    ax.set_ylim(yy.min(), yy.max())
+	    ax.set_xticks(())
+	    ax.set_yticks(())
+	    i += 1
+
+	    # iterate over classifiers
+	    for name, clf in zip(names, classifiers):
+	        ax = plt.subplot(len(datasets), len(classifiers) + 1, i)
+	        score = cross_val_score(clf, X, y, cv=10, scoring='neg_log_loss', n_jobs=-1)#clf.score(X_test, y_test)
+	        clf.fit(X, y)
+
+	        # Plot the decision boundary. For that, we will assign a color to each
+	        # point in the mesh [x_min, x_max]x[y_min, y_max].
+	        if hasattr(clf, "decision_function"):
+	            Z = clf.decision_function(np.c_[xx.ravel(), yy.ravel()])
+	        else:
+	            Z = clf.predict_proba(np.c_[xx.ravel(), yy.ravel()])[:, 1]
+
+	        # Put the result into a color plot
+	        Z = Z.reshape(xx.shape)
+	        ax.contourf(xx, yy, Z, cmap=cm, alpha=.8)
+
+	        # Plot also the training points
+	        ax.scatter(X[:, 0], X[:, 1], c=y, cmap=cm_bright)
+	        # and testing points
+	        ax.scatter(X[:, 0], X[:, 1], c=y, cmap=cm_bright,
+	                   alpha=0.6)
+
+	        ax.set_xlim(xx.min(), xx.max())
+	        ax.set_ylim(yy.min(), yy.max())
+	        ax.set_xticks(())
+	        ax.set_yticks(())
+	        if ds_cnt == 0:
+	            ax.set_title(name)
+	        ax.text(xx.max() - .3, yy.min() + .3, ('%.2f' % -score.mean()).lstrip('0'),
+	                size=15, horizontalalignment='right')
+	        i += 1
+
+	plt.tight_layout()
+	plt.show()
+
+	# ===================================================================================================
 #				  					        MAIN FUNCTIONALITY
 # ===================================================================================================
 
 if __name__=="__main__":
+
+	shouldPlot = True
+
 	# ==========================================
 	#				   TARGETS
 	# ==========================================
@@ -169,167 +323,7 @@ if __name__=="__main__":
 	# ==========================================
 	#				PREDICTIONS
 	# ==========================================
+	if(shouldPlot): plotImages(allFeatures, allClassifiers, classifier_names)
 
 	createPredictions(allTestFeatures, votingClassifier)
 
-
-
-
-
-
-# ===================================================================================================
-#				  					        HELPER FUNCTIONS
-# ===================================================================================================
-
-# Create a voting classifier from several classifiers for EACH feature, then
-# create a voting classifier from these feature-specific classifiers
-def createVotingClassifier(features, pipelines, names, classifiers):
-	outputFileName = "votingClassifier1.classifier"
-	if os.path.isfile(outputFileName):
-		print "Found classifier save:",outputFileName
-		save = open(outputFileName,'rb')
-		save_data = pickle.load(save)
-		votingClassifier = MultiLabelVotingClassifier(save_data[0],voting="hard", weights=save_data[1], separateFeatures = True)
-		save.close()
-		return votingClassifier
-
-	voterWeights = []
-	voters = []
-	# Create a model for each kind of feature and preprocessing pipeline for that feature:
-	for feature, preproc in zip(features, pipelines):
-
-		# We want the model to be a voter combined from several classifiers:
-		weights = []
-		for name, classifier in zip(names,classifiers):
-			print(name)
-			pl = pipeline.make_pipeline(
-				preproc,
-				classifier)
-
-			scorer = make_scorer(hammingLoss,greater_is_better=False)
-			scores = cross_val_score(pl, feature, targets, cv=10, scoring=scorer, n_jobs=1)
-			print "score: %0.2f (+/- %0.2f) [%s]" % (-scores.mean(), scores.std(),name)
-			weights.append(1.0/(-scores.mean()))
-
-		model = pipeline.make_pipeline(
-				preproc,
-				MultiLabelVotingClassifier(classifiers, voting='soft', weights=weights)
-				)
-
-		print "\nCalculating score of model:"
-		scorer = make_scorer(hammingLoss,greater_is_better=False)
-		scores = cross_val_score(model, feature, targets, cv=10, scoring=scorer, n_jobs=1)
-		print "score: %0.2f (+/- %0.2f) [%s]" % (-scores.mean(), scores.std(),"VotingClassifier")
-		voterWeights.append(1.0/(-scores.mean()))
-		voters.append(model)
-	print "!!!!!!!!!!!!!!!!!!! Creating final classifier !!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-	save_data = [voters,voterWeights]
-	votingClassifier = MultiLabelVotingClassifier(save_data[0],voting="hard", weights=save_data[1], separateFeatures = True)
-	#scorer = make_scorer(hammingLoss,greater_is_better=False)
-	#scores = cross_val_score(votingClassifier, features, targets, cv=10, scoring=scorer, n_jobs=1)
-	#print "!!!!!!!!!!!!!!!!!!! Score of final classifier !!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-	#print "score: %0.2f (+/- %0.2f) [%s]" % (-scores.mean(), scores.std(),"VotingClassifier")
-	print "\nStoring the classifier in "+outputFileName
-	output = open(outputFileName,"wb")
-	pickle.dump(save_data,output)
-	output.close()
-	print "Done"
-	return votingClassifier
-
-	
-def createPredictions(testFeatures, weightedVotingClassifier):
-	numTestSamples = np.asarray(testFeatures[0]).shape[0]
-	predictions = weightedVotingClassifier.predict(testFeatures)
-
-	id = 0
-	resultFileName = 'submission'
-	if len(sys.argv) == 2:
-		resultFileName = sys.argv[1]
-	if resultFileName[-4:] != ".csv":
-		resultFileName += ".csv"
-	with open(resultFileName, 'w') as csvfile:
-		resultWriter = csv.writer(csvfile, delimiter=',', quotechar='|')
-		resultWriter.writerow(['ID','Sample','Label','Predicted'])
-		for sample_no, sample in enumerate(predictions):
-			for label, prediction in zip(['gender','age','health'],[bool(sample[0]),bool(sample[1]),bool(sample[2])]):
-				row=[id,sample_no,label,prediction]
-				resultWriter.writerow(row)
-				id+=1
-		csvfile.close()
-
-
-# 	PLOT IMAGES FOR VISUALIZATION
-'''
-
-figure = plt.figure(figsize=(27, 9))
-i = 1
-# iterate over datasets
-for ds_cnt, ds in enumerate(datasets):
-    # preprocess dataset, split into training and test part
-    X, y = ds
-    X = StandardScaler().fit_transform(X)
-    X_train, X_test, y_train, y_test = \
-        train_test_split(X, y, test_size=.4, random_state=42)
-
-    x_min, x_max = X[:, 0].min() - .5, X[:, 0].max() + .5
-    y_min, y_max = X[:, 1].min() - .5, X[:, 1].max() + .5
-    xx, yy = np.meshgrid(np.arange(x_min, x_max, h),
-                         np.arange(y_min, y_max, h))
-
-    # just plot the dataset first
-    cm = plt.cm.RdBu
-    cm_bright = ListedColormap(['#FF0000', '#0000FF'])
-    ax = plt.subplot(len(datasets), len(classifiers) + 1, i)
-    if ds_cnt == 0:
-        ax.set_title("Input data")
-    # Plot the training points
-    ax.scatter(X_train[:, 0], X_train[:, 1], c=y_train, cmap=cm_bright)
-    # and testing points
-    ax.scatter(X_test[:, 0], X_test[:, 1], c=y_test, cmap=cm_bright, alpha=0.6)
-    ax.scatter(X[:, 0], X[:, 1], c=y, cmap=cm_bright)
-    # and testing points
-    ax.scatter(X[:, 0], X[:, 1], c=y, cmap=cm_bright, alpha=0.6)
-    ax.set_xlim(xx.min(), xx.max())
-    ax.set_ylim(yy.min(), yy.max())
-    ax.set_xticks(())
-    ax.set_yticks(())
-    i += 1
-
-    # iterate over classifiers
-    for name, clf in zip(names, classifiers):
-        ax = plt.subplot(len(datasets), len(classifiers) + 1, i)
-        score = cross_val_score(clf, X, y, cv=10, scoring='neg_log_loss', n_jobs=-1)#clf.score(X_test, y_test)
-        clf.fit(X, y)
-
-        # Plot the decision boundary. For that, we will assign a color to each
-        # point in the mesh [x_min, x_max]x[y_min, y_max].
-        if hasattr(clf, "decision_function"):
-            Z = clf.decision_function(np.c_[xx.ravel(), yy.ravel()])
-        else:
-            Z = clf.predict_proba(np.c_[xx.ravel(), yy.ravel()])[:, 1]
-
-        # Put the result into a color plot
-        Z = Z.reshape(xx.shape)
-        ax.contourf(xx, yy, Z, cmap=cm, alpha=.8)
-
-        # Plot also the training points
-        ax.scatter(X[:, 0], X[:, 1], c=y, cmap=cm_bright)
-        # and testing points
-        ax.scatter(X[:, 0], X[:, 1], c=y, cmap=cm_bright,
-                   alpha=0.6)
-
-        ax.set_xlim(xx.min(), xx.max())
-        ax.set_ylim(yy.min(), yy.max())
-        ax.set_xticks(())
-        ax.set_yticks(())
-        if ds_cnt == 0:
-            ax.set_title(name)
-        ax.text(xx.max() - .3, yy.min() + .3, ('%.2f' % -score.mean()).lstrip('0'),
-                size=15, horizontalalignment='right')
-        i += 1
-
-plt.tight_layout()
-plt.show()
-
-	
-'''
