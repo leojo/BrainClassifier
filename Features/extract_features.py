@@ -775,6 +775,87 @@ def extractColoredZone3D(imgDir, minColor, maxColor, nPartitions=1):
 	print "Done"
 	return allColoredZones
 	
+def extractGrayWhiteRatio(imgDir, nPartitions=1):
+	imgPath = os.path.join(imgDir,"*")
+
+	allColoredZones = []
+
+	# This is the cache for the feature, used to make sure we do the heavy computations more often than necessary
+	outputFileName = os.path.join(featuresDir,"grayWhiteRatio_"+str(nPartitions)+"_"+imgDir.replace(os.sep,"-")+".feature")
+	if os.path.isfile(outputFileName):
+		save = open(outputFileName,'rb')
+		zoneAverages = pickle.load(save)
+		save.close()
+		return zoneAverages
+
+	# Fetch all directory listings of set_train and sort them on the image number
+	allImageSrc = sorted(glob.glob(imgPath), key=extractImgNumber)
+	n_samples = len(allImageSrc);
+
+	if os.path.isfile(outputFileName+".part"):
+		save = open(outputFileName+".part",'rb')
+		allColoredZones = pickle.load(save)
+		save.close()
+		print "Found "+str(n_samples)+" images, "+str(len(allColoredZones))+" already processed. Resuming..."
+	else:
+		print "Found "+str(n_samples)+" images!"
+		print "Preparing the data"
+
+	img_shape = nib.load(allImageSrc[0]).get_data().shape
+	n_voxels=img_shape[0]*img_shape[1]*img_shape[2]
+	n_iter = n_voxels*n_samples
+	iter_count = len(allColoredZones)*n_voxels
+
+	minGray = 450
+	maxGray = 800
+	minWhite = 900
+	maxWhite = 2500
+	printProgress(iter_count, n_iter, decimals=5)
+	for i in range(len(allColoredZones),n_samples):
+		img = nib.load(allImageSrc[i])
+		imgData = img.get_data();
+		imgDataDisected = imgData[:, :, :, 0]
+
+		grayInZone = np.asarray([[[1.0]*nPartitions]*nPartitions]*nPartitions)
+		whiteInZone = np.asarray([[[1.0]*nPartitions]*nPartitions]*nPartitions)
+		# Size should be same for all dimensions, imgData should
+		# have same dimensions for x, y, z all such that they can be
+		# divided by nPartitions
+		for x in range(imgDataDisected.shape[0]):
+			for y in range(imgDataDisected.shape[1]):
+				for z in range(imgDataDisected.shape[2]):
+					iter_count += 1
+					val = imgDataDisected[x][y][z]
+					partX = int((x*nPartitions)/imgDataDisected.shape[0])
+					partY = int((y*nPartitions)/imgDataDisected.shape[1])
+					partZ = int((z*nPartitions)/imgDataDisected.shape[2])
+					
+					if val <= maxGray and val >= minGray: # Gray
+						grayInZone[partX][partY][partZ] += 1.0
+					if val <= maxWhite and val >= minWhite: #White
+						whiteInZone[partX][partY][partZ] += 1.0
+					printProgress(iter_count,n_iter,decimals=5)
+
+		zoneRatio = grayInZone/whiteInZone
+		allColoredZones.append(zoneRatio.flatten().tolist())
+
+		output = open(outputFileName+".part","wb")
+		pickle.dump(allColoredZones,output)
+		output.close()
+
+		
+
+	print "\nStoring the features in "+outputFileName
+	output = open(outputFileName,"wb")
+	pickle.dump(allColoredZones,output)
+	output.close()
+	print "Done"
+
+	if os.path.isfile(outputFileName+".part"):
+		os.remove(outputFileName+".part")
+		
+	return allColoredZones
+
 def extractHippocampi(imgDir):
 	imgPath = os.path.join(imgDir,"*")
 

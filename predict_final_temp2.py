@@ -113,9 +113,9 @@ def createVotingClassifier(features, pipelines, names, classifiers):
 	return votingClassifier
 
 	
-def createPredictions(testFeatures, weightedVotingClassifier):
+def createPredictions(testFeatures, votingClassifier):
 	numTestSamples = np.asarray(testFeatures[0]).shape[0]
-	predictions = weightedVotingClassifier.predict(testFeatures)
+	predictions = votingClassifier.predict(testFeatures)
 
 	id = 0
 	resultFileName = 'submission'
@@ -132,6 +132,32 @@ def createPredictions(testFeatures, weightedVotingClassifier):
 				resultWriter.writerow(row)
 				id+=1
 		csvfile.close()
+
+def createWeightedPredictions(testFeatures, classifs):
+	numTestSamples = np.asarray(testFeatures[0]).shape[0]
+	numClassifs = len(classifs)
+	
+	weightedPrediction = np.zeros(numTestSamples)
+	for i in range(0, numClassifs):
+		weightedPrediction += predict(testfeatures)
+	predictions = .predict(testFeatures)
+
+	id = 0
+	resultFileName = 'submission'
+	if len(sys.argv) == 2:
+		resultFileName = sys.argv[1]
+	if resultFileName[-4:] != ".csv":
+		resultFileName += ".csv"
+	with open(resultFileName, 'w') as csvfile:
+		resultWriter = csv.writer(csvfile, delimiter=',', quotechar='|')
+		resultWriter.writerow(['ID','Sample','Label','Predicted'])
+		for sample_no, sample in enumerate(predictions):
+			for label, prediction in zip(['gender','age','health'],[bool(sample[0]),bool(sample[1]),bool(sample[2])]):
+				row=[id,sample_no,label,prediction]
+				resultWriter.writerow(row)
+				id+=1
+		csvfile.close()
+
 
 
 def plot_hyperplane(clf, min_x, max_x, linestyle, label, col):
@@ -183,13 +209,9 @@ def plot_subfigure(X, Y, subplot, title, transform, classif):
                facecolors='none', linewidths=2, label='Class 3')
 
 
-    plot_hyperplane(classif.estimators_[0], min_x, max_x, 'k-.',
-                    'Boundary\nfor class 1', 'orange')
-    plot_hyperplane(classif.estimators_[1], min_x, max_x, 'ko',
-                    'Boundary\nfor class 2', 'green')
-    plot_hyperplane(classif.estimators_[2], min_x, max_x, 'k>',
-                    'Boundary\nfor class 3', 'blue')
-
+    #plot_hyperplane(classif.estimators_[0], min_x, max_x, 'k-.', 'Boundary\nfor class 1', 'orange')
+    #plot_hyperplane(classif.estimators_[1], min_x, max_x, 'ko', 'Boundary\nfor class 2', 'green')
+    #plot_hyperplane(classif.estimators_[2], min_x, max_x, 'k>', 'Boundary\nfor class 3', 'blue')
 
 
     plt.xticks(())
@@ -264,6 +286,46 @@ def createSingleLabelVC(classLabel, features, pipelines, names, classifiers):
 
 	return bestVoter
 
+# Returns the best voting classifier, I.E. the classifier created from the feature that worked
+# best for this label
+def createSingleLabelVCS(classLabel, features, pipelines, names, classifiers):
+
+	voterWeights = []
+	voters = []
+	# Create a model for each kind of feature and preprocessing pipeline for that feature:
+	for i, feature, preproc in zip(range(len(features)), features, pipelines):
+		
+		print "Shape of feature:",np.asarray(feature).shape
+		print "Shape of targets:",targets[:,classLabel].shape
+		# We want the model to be a voter combined from several classifiers:
+		weights = []
+		for name, classifier in zip(names,classifiers):
+			print(name)
+			pl = pipeline.make_pipeline(
+				preproc,
+				classifier)
+
+			scorer = make_scorer(partialHammingLoss,greater_is_better=False)
+			scores = cross_val_score(pl, feature, targets[:,classLabel], cv=10, scoring=scorer, n_jobs=1)
+			print "score: %0.2f (+/- %0.2f) [%s]" % (-scores.mean(), scores.std(),name)
+			weights.append(1.0/(-scores.mean()))
+
+		model = pipeline.make_pipeline(
+				preproc,
+				VotingClassifier(zip(names,classifiers), voting='soft', weights=weights ,n_jobs=1)
+				)
+
+		print "\nCalculating score of model:"
+		scorer = make_scorer(partialHammingLoss,greater_is_better=False)
+		scores = cross_val_score(model, feature, targets[:,classLabel], cv=10, scoring=scorer, n_jobs=1)
+		print "score: %0.2f (+/- %0.2f) [%s]" % (-scores.mean(), scores.std(),"VotingClassifier")
+
+
+		model.fit(feature,targets[:,classLabel])
+		voterWeights.append(1.0/(-scores.mean()))
+		voters.append(model)
+	return np.array(zip(voters,voterWeights)) # Since the voters in this "model" require different feature-preprocessing it must be used manually
+
 # ===================================================================================================
 #				  					        MAIN FUNCTIONALITY
 # ===================================================================================================
@@ -294,6 +356,7 @@ if __name__=="__main__":
 	flipzones = extractFlipSim('data/set_train')
 	blackzone = extractBlackzones('data/set_train',nPartitions=3)
 	grayzone = extractColoredZone3D('data/set_train', 450, 800, 8)
+	grayWhiteRatio = extractGrayWhiteRatio('data/set_train', 8)
 	hippocMedian = extractHippocampusMedians('data/set_train')
 	hippocMean = extractHippocampusMeans('data/set_train')
 	hippocVar = extractHippocampusVars('data/set_train')
@@ -304,6 +367,7 @@ if __name__=="__main__":
 	allFeatures.append(blackzone)
 	#allFeatures.append(whitegray)
 	allFeatures.append(grayzone)
+	allFeatures.append(grayWhiteRatio)
 	allFeatures.append(hippocVar)
 	allFeatures.append(hippocMean)
 	allFeatures.append(hippocMedian)
@@ -320,6 +384,7 @@ if __name__=="__main__":
 	testFlipzones = extractFlipSim('data/set_test')
 	testBlackzone = extractBlackzones('data/set_test',nPartitions=3)
 	testGrayzone = extractColoredZone3D('data/set_test', 450, 800, 8)
+	testGrayWhiteRatio  = extractGrayWhiteRatio('data/set_test', 8)
 	testHippocMedian = extractHippocampusMedians('data/set_test')
 	testHippocMean = extractHippocampusMeans('data/set_test')
 	testHippocVar = extractHippocampusVars('data/set_test')
@@ -330,6 +395,7 @@ if __name__=="__main__":
 	allTestFeatures.append(testBlackzone)
 	#allTestFeatures.append(whitegray)
 	allTestFeatures.append(testGrayzone)
+	allTestFeatures.append(testGrayWhiteRatio)
 	allTestFeatures.append(testHippocVar)
 	allTestFeatures.append(testHippocMean)
 	allTestFeatures.append(testHippocMedian)
@@ -391,6 +457,13 @@ if __name__=="__main__":
 
 	sexModel = createSingleLabelVC(0, allFeatures, allPipelines, classifier_names, allClassifiers)
 
+	sexModel = createSingleLabelVCS(0, allFeatures, allPipelines, classifier_names, allClassifiers)
+	
+	sexVoters = sexModel[0]
+	sexVoterWeights = sexModel[1]
+
+
+	
 	# ==========================================
 	# 				   AGE 
 	# ==========================================
