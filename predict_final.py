@@ -13,6 +13,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.gaussian_process.kernels import RBF
 from sklearn.neural_network import MLPClassifier
+from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import RandomForestClassifier
 
 
@@ -185,39 +186,35 @@ Chealth = np.concatenate((Chealth,healthFeatures[-1]), axis = 1)
 print "Health feature shapes:",Chealth.shape," (Test",Chealth_t.shape
 
 # =================================================================	#
-#						ESTIMATORS									#
+#						   ESTIMATORS				 				#
 # =================================================================	#
 
 estA = 	make_pipeline(
 			VarianceThreshold(),
 			VotingClassifier(estimators = [
-				("SVC", SVC(kernel="linear", probability=True)),
 				("LogisticRegression", LogisticRegression()),
-				("Gaussian", GaussianProcessClassifier(1.0 * RBF(1.0), warm_start=True)),
-				("NeuralNet", MLPClassifier(alpha=1)),
-				("RandomForest", RandomForestClassifier(max_depth=30,n_estimators=200))
+				("Naive Bayes",  GaussianNB()),
+				("NeuralNet", MLPClassifier(alpha=1))
 				], voting = "soft")
 			)
 		
 estB = 	make_pipeline(
 			VarianceThreshold(),
 			VotingClassifier(estimators = [
-				("SVC", SVC(kernel="linear", probability=True)),
 				("LogisticRegression", LogisticRegression()),
+				("Naive Bayes",  GaussianNB()),
 				("Gaussian", GaussianProcessClassifier(1.0 * RBF(1.0), warm_start=True)),
 				("NeuralNet", MLPClassifier(alpha=1)),
-				("RandomForest", RandomForestClassifier(max_depth=30,n_estimators=200))
+				("RandomForest", RandomForestClassifier(max_depth=5, n_estimators=10))
 				], voting = "soft")
 			)
 
 estC = 	make_pipeline(
 			VarianceThreshold(),
 			VotingClassifier(estimators = [
-				("SVC", SVC(kernel="linear", probability=True)),
-				("LogisticRegression", LogisticRegression()),
+				("Naive Bayes",  GaussianNB()),
 				("Gaussian", GaussianProcessClassifier(1.0 * RBF(1.0), warm_start=True)),
 				("NeuralNet", MLPClassifier(alpha=1)),
-				("RandomForest", RandomForestClassifier(max_depth=30,n_estimators=200))
 				], voting = "soft")
 			)
 
