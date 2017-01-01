@@ -18,7 +18,7 @@ from sklearn.ensemble import RandomForestClassifier
 
 from sklearn.ensemble import VotingClassifier
 
-from sklearn.feature_selection import SelectKBest
+from sklearn.feature_selection import SelectKBest, VarianceThreshold
 from sklearn.decomposition import PCA
 from sklearn.pipeline import make_pipeline
 
@@ -36,8 +36,8 @@ from Features.scoring import *
 def createPredictions(sexFeatures,ageFeatures,healthFeatures, sexEst, ageEst, healthEst):
 	sexPredictions = sexEst.predict(sexFeatures)
 	agePredictions = ageEst.predict(ageFeatures)
-	#agePredictedFeature = ageEst.predict_proba(ageFeatures)[:,1] # The predicted probability of age label = 1
-	#healthFeatures = np.concatenate((healthFeatures,agePredictedFeature),axis=1) # adding age prediction as feature
+	agePredictedFeature = np.array(agePredictions).reshape(-1,1) # The predicted probability of age label = 1
+	healthFeatures = np.concatenate((healthFeatures,agePredictedFeature),axis=1) # adding age prediction as feature
 	healthPredictions = healthEst.predict(healthFeatures)
 	predictions = zip(sexPredictions,agePredictions,healthPredictions)
 	print predictions
@@ -84,12 +84,14 @@ healthFeatures = []
 flipzones = extractFlipSim('data/set_train')
 blackzone = extractBlackzones('data/set_train',nPartitions=3)
 grayzone = extractColoredZone3D('data/set_train', 450, 800, 8)
+grayWhiteRatio = extractGrayWhiteRatio('data/set_train', 8)
 hippocMedian = extractHippocampusMedians('data/set_train')
 #hippocMean = extractHippocampusMeans('data/set_train')
 hippocVar = extractHippocampusVars('data/set_train')
 hippocHisto = extractHippocampusHistograms('data/set_train')
 
 sexFeatures.append(grayzone)
+sexFeatures.append(grayWhiteRatio)
 sexFeatures.append(hippocVar)
 
 ageFeatures.append(blackzone)
@@ -100,7 +102,7 @@ healthFeatures.append(flipzones)
 healthFeatures.append(blackzone)
 healthFeatures.append(hippocMedian)
 healthFeatures.append(hippocHisto)
-#healthFeatures.append(targets_age) #Age group as feature for health
+healthFeatures.append(np.array(targets_age).reshape(-1,1)) #Age group as feature for health
 
 # =================================================================	#
 #						TEST FEATURES								#
@@ -114,12 +116,14 @@ healthFeatures_t = []
 testFlipzones = extractFlipSim('data/set_test')
 testBlackzone = extractBlackzones('data/set_test',nPartitions=3)
 testGrayzone = extractColoredZone3D('data/set_test', 450, 800, 8)
+testGrayWhiteRatio = extractGrayWhiteRatio('data/set_test', 8)
 testHippocMedian = extractHippocampusMedians('data/set_test')
 #testHippocMean = extractHippocampusMeans('data/set_test')
 testHippocVar = extractHippocampusVars('data/set_test')
 testHippocHisto = extractHippocampusHistograms('data/set_test')
 
 sexFeatures_t.append(testGrayzone)
+sexFeatures_t.append(testGrayWhiteRatio)
 sexFeatures_t.append(testHippocVar)
 
 ageFeatures_t.append(testBlackzone)
@@ -176,26 +180,50 @@ for f, f_t in zip(healthFeatures,healthFeatures_t):
 		Chealth = np.concatenate((Chealth,f), axis = 1)
 		Chealth_t = np.concatenate((Chealth_t,f_t), axis=1)
 
+Chealth = np.concatenate((Chealth,healthFeatures[-1]), axis = 1)
+
 print "Health feature shapes:",Chealth.shape," (Test",Chealth_t.shape
 
 # =================================================================	#
 #						ESTIMATORS									#
 # =================================================================	#
 
-est = 	make_pipeline(
-			SelectKBest(k=250),
+estA = 	make_pipeline(
+			VarianceThreshold(),
 			VotingClassifier(estimators = [
 				("SVC", SVC(kernel="linear", probability=True)),
 				("LogisticRegression", LogisticRegression()),
 				("Gaussian", GaussianProcessClassifier(1.0 * RBF(1.0), warm_start=True)),
 				("NeuralNet", MLPClassifier(alpha=1)),
 				("RandomForest", RandomForestClassifier(max_depth=30,n_estimators=200))
-				], voting = "hard")
+				], voting = "soft")
 			)
 		
-estA = clone(est)
-estB = clone(est)
-estC = clone(est)
+estB = 	make_pipeline(
+			VarianceThreshold(),
+			VotingClassifier(estimators = [
+				("SVC", SVC(kernel="linear", probability=True)),
+				("LogisticRegression", LogisticRegression()),
+				("Gaussian", GaussianProcessClassifier(1.0 * RBF(1.0), warm_start=True)),
+				("NeuralNet", MLPClassifier(alpha=1)),
+				("RandomForest", RandomForestClassifier(max_depth=30,n_estimators=200))
+				], voting = "soft")
+			)
+
+estC = 	make_pipeline(
+			VarianceThreshold(),
+			VotingClassifier(estimators = [
+				("SVC", SVC(kernel="linear", probability=True)),
+				("LogisticRegression", LogisticRegression()),
+				("Gaussian", GaussianProcessClassifier(1.0 * RBF(1.0), warm_start=True)),
+				("NeuralNet", MLPClassifier(alpha=1)),
+				("RandomForest", RandomForestClassifier(max_depth=30,n_estimators=200))
+				], voting = "soft")
+			)
+
+#estA = clone(est)
+#estB = clone(est)
+#estC = clone(est)
 
 scorer = make_scorer(partialHammingLoss,greater_is_better=False)
 
