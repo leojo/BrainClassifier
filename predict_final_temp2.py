@@ -57,6 +57,85 @@ Goal:
 #				  					        HELPER FUNCTIONS
 # ===================================================================================================
 
+
+def plot_hyperplane(clf, min_x, max_x, linestyle, label, col):
+    # get the separating hyperplane
+    w = clf.coef_[0]
+    a = -w[0] / w[1]
+    xx = np.linspace(min_x - 5, max_x + 5)  # make sure the line is long enough
+    yy = a * xx - (clf.intercept_[0]) / w[1]
+    plt.plot(xx, yy, linestyle, label=label, color=col)
+
+
+def plot_subfigure(X, Y, subplot, title, transform, classif):
+    if transform == "pca":
+        X = PCA(n_components=2).fit_transform(X)
+    elif transform == "cca":
+        X = CCA(n_components=2).fit(X, Y).transform(X)
+    else:
+        raise ValueError
+
+    min_x = np.min(X[:, 0])
+    max_x = np.max(X[:, 0])
+
+    min_y = np.min(X[:, 1])
+    max_y = np.max(X[:, 1])
+
+    #classif = OneVsRestClassifier(SVC(kernel='linear'))
+    print Y.shape
+    print X.shape
+    classif.fit(X, Y)
+    plt.subplot(1, 1, subplot)
+    plt.title(title)
+
+    zero_class = np.where(Y[:, 0])
+    zero_not_class = np.where(1-Y[:, 0])
+    one_class = np.where(Y[:, 1])
+    one_not_class = np.where(1-Y[:, 1])
+    two_class = np.where(Y[:, 2])
+    two_not_class = np.where(1-Y[:, 2])
+    plt.scatter(X[:, 0], X[:, 1], s=40, c='gray')
+    plt.scatter(X[zero_class, 0], X[zero_class, 1], edgecolors='black',
+               facecolors='black', linewidths=2, label='Class 1')
+    plt.scatter(X[zero_not_class, 0], X[zero_not_class, 1], edgecolors='orange',
+               facecolors='orange', linewidths=2, label='Class 1')
+    plt.scatter(X[one_class, 0], X[one_class, 1], s=500, edgecolors='green',
+               facecolors='none', linewidths=2, label='Class 2')
+    plt.scatter(X[two_class, 0], X[two_class, 1], s=340, edgecolors='red', marker='<',
+               facecolors='none', linewidths=2, label='Class 3')
+    plt.scatter(X[two_not_class, 0], X[two_not_class, 1], s=300, edgecolors='blue', marker='>',
+               facecolors='none', linewidths=2, label='Class 3')
+
+
+    #plot_hyperplane(classif.estimators_[0], min_x, max_x, 'k-.', 'Boundary\nfor class 1', 'orange')
+    #plot_hyperplane(classif.estimators_[1], min_x, max_x, 'ko', 'Boundary\nfor class 2', 'green')
+    #plot_hyperplane(classif.estimators_[2], min_x, max_x, 'k>', 'Boundary\nfor class 3', 'blue')
+
+
+    plt.xticks(())
+    plt.yticks(())
+
+    plt.xlim(min_x - .5 * max_x, max_x + .5 * max_x)
+    plt.ylim(min_y - .5 * max_y, max_y + .5 * max_y)
+    if subplot == 2:
+        plt.xlabel('First principal component')
+        plt.ylabel('Second principal component')
+        plt.legend(loc="upper left")
+
+def makePlot(X, Y, classif, plotNum):
+
+    plt.figure(figsize=(8, 6))
+
+    #plot_subfigure(X, Y, plotNum, "Without unlabeled samples + CCA", "cca", classif)
+    plot_subfigure(X, Y, plotNum, "Without unlabeled samples + PCA", "pca", classif)
+    
+    plt.subplots_adjust(.04, .02, .97, .94, .09, .2)
+    plt.show()
+
+def makeAllPlots(allX, Y, classif):
+	for i in range(0, len(allX)):
+		makePlot(allX[i], Y, classif, 1)
+
 # Create a voting classifier from several classifiers for EACH feature, then
 # create a voting classifier from these feature-specific classifiers
 def createVotingClassifier(features, pipelines, names, classifiers):
@@ -137,14 +216,38 @@ def createPredictions(testFeatures, sexModel, ageModel, healthModel):
 				id+=1
 		csvfile.close()
 
-def createWeightedPredictions(testFeatures, classifs):
+# models array of model, model = [classifiers, classifier weights]
+# models[i] is the model = classif, classifweights for feature testFeatures[i]
+def createWeightedPrediction(testFeatures, models):
 	numTestSamples = np.asarray(testFeatures[0]).shape[0]
-	numClassifs = len(classifs)
 	
+	totalWeight = 0.0
 	weightedPrediction = np.zeros(numTestSamples)
-	for i in range(0, numClassifs):
-		weightedPrediction += predict(testfeatures)
-	predictions = .predict(testFeatures)
+	for i in range(0, len(testFeatures)):
+		feature = testFeatures[i]
+		model = models[i]
+		classifier = model[0]
+		clWeight = model[1]
+
+		bothPredictions = np.array(classifier.predict_proba(testFeatures[i]))
+		print bothPredictions
+
+		probaPredictions = bothPredictions[:,1]
+		print probaPredictions
+		weightedPrediction += np.array(probaPredictions)*clWeight
+		totalWeight += clWeight
+
+	return np.round(weightedPrediction/totalWeight)
+
+
+# models array of model, model = [classifiers, classifier weights]
+# models[i] is the model = classif, classifweights for feature testFeatures[i]
+def createWeightedPredictions(testFeatures, sexModels, ageModels, healthModels):
+	sexPredictions = createWeightedPrediction(testFeatures, sexModels)
+	agePredictions = createWeightedPrediction(testFeatures, ageModels)
+	healthPredictions = createWeightedPrediction(testFeatures, healthModels)
+
+	weightedPredictions = zip(sexPredictions,agePredictions,healthPredictions)
 
 	id = 0
 	resultFileName = 'submission'
@@ -155,7 +258,7 @@ def createWeightedPredictions(testFeatures, classifs):
 	with open(resultFileName, 'w') as csvfile:
 		resultWriter = csv.writer(csvfile, delimiter=',', quotechar='|')
 		resultWriter.writerow(['ID','Sample','Label','Predicted'])
-		for sample_no, sample in enumerate(predictions):
+		for sample_no, sample in enumerate(weightedPredictions):
 			for label, prediction in zip(['gender','age','health'],[bool(sample[0]),bool(sample[1]),bool(sample[2])]):
 				row=[id,sample_no,label,prediction]
 				resultWriter.writerow(row)
@@ -164,83 +267,6 @@ def createWeightedPredictions(testFeatures, classifs):
 
 
 
-def plot_hyperplane(clf, min_x, max_x, linestyle, label, col):
-    # get the separating hyperplane
-    w = clf.coef_[0]
-    a = -w[0] / w[1]
-    xx = np.linspace(min_x - 5, max_x + 5)  # make sure the line is long enough
-    yy = a * xx - (clf.intercept_[0]) / w[1]
-    plt.plot(xx, yy, linestyle, label=label, color=col)
-
-
-def plot_subfigure(X, Y, subplot, title, transform, classif):
-    if transform == "pca":
-        X = PCA(n_components=2).fit_transform(X)
-    elif transform == "cca":
-        X = CCA(n_components=2).fit(X, Y).transform(X)
-    else:
-        raise ValueError
-
-    min_x = np.min(X[:, 0])
-    max_x = np.max(X[:, 0])
-
-    min_y = np.min(X[:, 1])
-    max_y = np.max(X[:, 1])
-
-    #classif = OneVsRestClassifier(SVC(kernel='linear'))
-    print Y.shape
-    print X.shape
-    classif.fit(X, Y)
-    plt.subplot(1, 1, subplot)
-    plt.title(title)
-
-    zero_class = np.where(Y[:, 0])
-    zero_not_class = np.where(1-Y[:, 0])
-    one_class = np.where(Y[:, 1])
-    one_not_class = np.where(1-Y[:, 1])
-    two_class = np.where(Y[:, 2])
-    two_not_class = np.where(1-Y[:, 2])
-    plt.scatter(X[:, 0], X[:, 1], s=40, c='gray')
-    plt.scatter(X[zero_class, 0], X[zero_class, 1], edgecolors='black',
-               facecolors='black', linewidths=2, label='Class 1')
-    plt.scatter(X[zero_not_class, 0], X[zero_not_class, 1], edgecolors='orange',
-               facecolors='orange', linewidths=2, label='Class 1')
-    plt.scatter(X[one_class, 0], X[one_class, 1], s=500, edgecolors='green',
-               facecolors='none', linewidths=2, label='Class 2')
-    plt.scatter(X[two_class, 0], X[two_class, 1], s=340, edgecolors='red', marker='<',
-               facecolors='none', linewidths=2, label='Class 3')
-    plt.scatter(X[two_not_class, 0], X[two_not_class, 1], s=300, edgecolors='blue', marker='>',
-               facecolors='none', linewidths=2, label='Class 3')
-
-
-    #plot_hyperplane(classif.estimators_[0], min_x, max_x, 'k-.', 'Boundary\nfor class 1', 'orange')
-    #plot_hyperplane(classif.estimators_[1], min_x, max_x, 'ko', 'Boundary\nfor class 2', 'green')
-    #plot_hyperplane(classif.estimators_[2], min_x, max_x, 'k>', 'Boundary\nfor class 3', 'blue')
-
-
-    plt.xticks(())
-    plt.yticks(())
-
-    plt.xlim(min_x - .5 * max_x, max_x + .5 * max_x)
-    plt.ylim(min_y - .5 * max_y, max_y + .5 * max_y)
-    if subplot == 2:
-        plt.xlabel('First principal component')
-        plt.ylabel('Second principal component')
-        plt.legend(loc="upper left")
-
-def makePlot(X, Y, classif, plotNum):
-
-    plt.figure(figsize=(8, 6))
-
-    #plot_subfigure(X, Y, plotNum, "Without unlabeled samples + CCA", "cca", classif)
-    plot_subfigure(X, Y, plotNum, "Without unlabeled samples + PCA", "pca", classif)
-    
-    plt.subplots_adjust(.04, .02, .97, .94, .09, .2)
-    plt.show()
-
-def makeAllPlots(allX, Y, classif):
-	for i in range(0, len(allX)):
-		makePlot(allX[i], Y, classif, 1)
 
 # Returns the best voting classifier, I.E. the classifier created from the feature that worked
 # best for this label
@@ -355,7 +381,7 @@ if __name__=="__main__":
 
 	allFeatures = []
 
-	histo = extractHistograms('data/set_train', 4000, 45, 9)
+	#histo = extractHistograms('data/set_train', 4000, 45, 9)
 	flipzones = extractFlipSim('data/set_train')
 	blackzone = extractBlackzones('data/set_train',nPartitions=3)
 	grayzone = extractColoredZone3D('data/set_train', 450, 800, 8)
@@ -365,15 +391,14 @@ if __name__=="__main__":
 	hippocVar = extractHippocampusVars('data/set_train')
 	hippocHisto = extractHippocampusHistograms('data/set_train')
 
-	allFeatures.append(histo)
+	#allFeatures.append(histo)
 	allFeatures.append(flipzones)
 	allFeatures.append(blackzone)
-	#allFeatures.append(whitegray)
 	allFeatures.append(grayzone)
 	allFeatures.append(grayWhiteRatio)
-	allFeatures.append(hippocVar)
-	allFeatures.append(hippocMean)
 	allFeatures.append(hippocMedian)
+	allFeatures.append(hippocMean)
+	allFeatures.append(hippocVar)
 	allFeatures.append(hippocHisto)
 
 	# ==========================================
@@ -383,7 +408,7 @@ if __name__=="__main__":
 
 	allTestFeatures = []
 
-	testHisto = extractHistograms('data/set_test', 4000, 45, 9)
+	#testHisto = extractHistograms('data/set_test', 4000, 45, 9)
 	testFlipzones = extractFlipSim('data/set_test')
 	testBlackzone = extractBlackzones('data/set_test',nPartitions=3)
 	testGrayzone = extractColoredZone3D('data/set_test', 450, 800, 8)
@@ -393,15 +418,14 @@ if __name__=="__main__":
 	testHippocVar = extractHippocampusVars('data/set_test')
 	testHippocHisto = extractHippocampusHistograms('data/set_test')
 
-	allTestFeatures.append(testHisto)
+	#allTestFeatures.append(testHisto)
 	allTestFeatures.append(testFlipzones)
 	allTestFeatures.append(testBlackzone)
-	#allTestFeatures.append(whitegray)
 	allTestFeatures.append(testGrayzone)
 	allTestFeatures.append(testGrayWhiteRatio)
-	allTestFeatures.append(testHippocVar)
-	allTestFeatures.append(testHippocMean)
 	allTestFeatures.append(testHippocMedian)
+	allTestFeatures.append(testHippocMean)
+	allTestFeatures.append(testHippocVar)
 	allTestFeatures.append(testHippocHisto)
 
 
@@ -411,23 +435,25 @@ if __name__=="__main__":
 
 	allPipelines = []
 
-	histoPipeline = pipeline.make_pipeline(PCA(n_components=1400), StandardScaler())
+	#histoPipeline = pipeline.make_pipeline(PCA(n_components=1400), StandardScaler())
 	flipzonePipeline  = pipeline.make_pipeline(PCA(n_components=10))
 	blackzonePipeline = pipeline.make_pipeline(PCA(n_components=10))
 	grayzonePipeline  = pipeline.make_pipeline(PCA(n_components=10))
+	grayWhiteRatioPipeline = pipeline.make_pipeline(PCA(n_components=10))
 	hippocVariancePipeline  = pipeline.make_pipeline(PCA(n_components=1))
 	hippocMeanPipeline  = pipeline.make_pipeline(PCA(n_components=1))
 	hippocMedianPipeline  = pipeline.make_pipeline(PCA(n_components=1))
 	hippocHistoPipeline  = pipeline.make_pipeline(PCA(n_components=10))
 
 
-	allPipelines.append(histoPipeline)
+	#allPipelines.append(histoPipeline)
 	allPipelines.append(flipzonePipeline)
 	allPipelines.append(blackzonePipeline)
 	allPipelines.append(grayzonePipeline)
-	allPipelines.append(hippocVariancePipeline)
-	allPipelines.append(hippocMeanPipeline)
+	allPipelines.append(grayWhiteRatioPipeline)
 	allPipelines.append(hippocMedianPipeline)
+	allPipelines.append(hippocMeanPipeline)
+	allPipelines.append(hippocVariancePipeline)
 	allPipelines.append(hippocHistoPipeline)
 
 	# ==========================================
@@ -446,8 +472,8 @@ if __name__=="__main__":
 	classifier_names.append("Gaussian Process base")
 	allClassifiers.append(logBased)
 	classifier_names.append("Logistic Regression base")
-	allClassifiers.append(rforestBased)
-	classifier_names.append("Random Forest base")
+	#allClassifiers.append(rforestBased)
+	#classifier_names.append("Random Forest base")
 	allClassifiers.append(mlpBased)
 	classifier_names.append("MLP base")
 
@@ -458,34 +484,31 @@ if __name__=="__main__":
 	# 				   SEX 
 	# ==========================================
 
-	sexModel = createSingleLabelVC(0, allFeatures, allPipelines, classifier_names, allClassifiers)
-
-	sexModel = createSingleLabelVCS(0, allFeatures, allPipelines, classifier_names, allClassifiers)
+	#sexModel = createSingleLabelVC(0, allFeatures, allPipelines, classifier_names, allClassifiers)
+	sexModels = createSingleLabelVCS(0, allFeatures, allPipelines, classifier_names, allClassifiers)
 	
-	sexVoters = sexModel[0]
-	sexVoterWeights = sexModel[1]
-
-
 	
 	# ==========================================
 	# 				   AGE 
 	# ==========================================
 
 
-	ageModel = createSingleLabelVC(1, allFeatures, allPipelines, classifier_names, allClassifiers)
+	#ageModel = createSingleLabelVC(1, allFeatures, allPipelines, classifier_names, allClassifiers)
+	ageModels = createSingleLabelVCS(1, allFeatures, allPipelines, classifier_names, allClassifiers)
+
 
 	# ==========================================
 	# 				  HEALTH 
 	# ==========================================
 
 
-	healthModel = createSingleLabelVC(2, allFeatures, allPipelines, classifier_names, allClassifiers)
-
+	#healthModel = createSingleLabelVC(2, allFeatures, allPipelines, classifier_names, allClassifiers)
+	healthModels = createSingleLabelVCS(2, allFeatures, allPipelines, classifier_names, allClassifiers)
 
 	# ==========================================
 	#				PREDICTIONS
 	# ==========================================
 	if(shouldPlot): makeAllPlots(allFeatures, targets,OneVsRestClassifier(LogisticRegression()))
 
-	createPredictions(allTestFeatures, sexModel, ageModel, healthModel)
+	createWeightedPredictions(allTestFeatures, sexModels, ageModels, healthModels)
 
