@@ -3,3 +3,4 @@ data/*
 *.pyc
 Features/*.feature*
 *.csv
+*.clf
