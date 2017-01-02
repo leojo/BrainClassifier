@@ -233,8 +233,9 @@ print "Health feature shapes:",Chealth.shape," (Test",Chealth_t.shape
 
 estA = 	make_pipeline(
 			VarianceThreshold(),
-			PCA(n_components=100),
+			PCA(n_components=1500),
 			VotingClassifier(estimators = [
+				("SVC", SVC(kernel="linear", probability=True)),
 				("LogisticRegression", LogisticRegression()),
 				("Gaussian", GaussianProcessClassifier(0.7 * RBF(1.0), warm_start=True)),
 				("Naive Bayes",  GaussianNB()),
@@ -249,25 +250,27 @@ estB = 	make_pipeline(
 			PCA(n_components=1500),
 			#SelectKBest(k=250),
 			VotingClassifier(estimators = [
+				("SVC", SVC(kernel="linear", probability=True)),
 				("LogisticRegression", LogisticRegression()),
 				("Naive Bayes",  GaussianNB()),
 				("Gaussian", GaussianProcessClassifier(1.0 * RBF(1.0), warm_start=True)),
 				("NeuralNet", MLPClassifier(alpha=1)),
-				("RandomForest", RandomForestClassifier(max_depth=5, n_estimators=10))
+				("RandomForest", RandomForestClassifier(max_depth=10, n_estimators=10))
 				], voting = "hard")#, weights=[1, 2, 3, 3, 3])
 			)
 
 estC = make_pipeline(
 			VarianceThreshold(),
 			#PCA(n_components=10),
-			PCA(n_components=1500),
-			#SelectKBest(k=150),
+			#PCA(n_components=1500),
+			SelectKBest(k=150),
 			RandomOverSampler(),
 			VotingClassifier(estimators = [
+				("SVC", SVC(kernel="linear", probability=True)),
 				("LogisticRegression", LogisticRegression()),
 				("GaussianProcess", GaussianProcessClassifier(0.7* RBF(0.5), warm_start=True)),
-				("RandomForest", RandomForestClassifier(max_depth=5, n_estimators=10)),
-				("NeuralNet", MLPClassifier(alpha=1)),
+				("RandomForest", RandomForestClassifier(max_depth=10, n_estimators=10)),
+				("NeuralNet", MLPClassifier(alpha=0.7)),
 				("Naive Bayes", GaussianNB())
 				], voting = "hard")
 			)
