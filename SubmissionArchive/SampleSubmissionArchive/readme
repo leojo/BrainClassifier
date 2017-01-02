@@ -1,0 +1,44 @@
+bjandrea@student.ethz.ch
+leoj@student.ethz.ch
+
+Preprocessing
+PCA,selectKBest,oversampling
+
+Features
+Hippocampus, Amygdala, GrayWhiteMatterRatio, SymmetryScore, BlackMatter, GrayMatter, Age
+
+Model
+VotingClassifier, LogisticRegression, LinearSVM, NaiveBayes, RandomForest, GaussianProcess, NeuralNet
+
+Description
+The features were as follows:
+Hippocampus:
+	We manually defined a region of the brain that contained most of the hippocampus in most images.
+	This area was then analysed for mean, variance and median values. The area was then also separated into 3x3x3
+	smaller areas and histograms taken of each individual area.
+Amygdala:
+	Was also manually defined a region of the brain that contained most of the amygdala in most images.
+	Then processed the area in the same way as the hippocampus.
+GrayWhiteMatterRatio:
+	We split the brain into 8x8x8 areas and counted the number of gray voxels and white voxels in each area, then returned
+	a vector containing these 512 ratio values.
+SymmetryScore:
+	Brain was again split into 8x8x8 areas and each area was compared to its counterpart in the opposite hemisphere. Each area then
+	received a score denoting the similarity to it's mirrored equivalent.
+BlackMatter:
+	The centre of the brain was split into 3x3x3 areas and then the number of black or "very dark" voxels was counted since we noticed a
+	significant difference in the size of this area between f.x. healthy and unhealthy brains.
+GrayMatter:
+	The brain was split into 8x8x8 areas and the number of gray (defined as intensities between 450 and 800) voxels counted in each area.
+Age:
+	We noticed a significant correlation between age and health. Our age predictor proved quite accurate so we decided to use the age label as
+	a feature for determining health.
+
+After feature extraction, features were hand picked for each label depending on cross validation scores and plotted images for data visualization.
+For each label, all the features associated with it were then concatenated into one big feature vector.
+
+For each label we created a specialized classifier and trained on the respective data.
+Using cross validation we attempted to manually fine tune the hyperparameters, feature and classifier selection.
+
+Finally when creating the predictions, we first predicted gender and age, and then appended the predicted age label to the health test data to
+predict the health label.
