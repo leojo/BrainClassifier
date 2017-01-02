@@ -993,10 +993,57 @@ def extractHippocampusMedians3D(imgDir):
 	return np.median(hippocampi,axis=1).reshape(-1,1)
 
 def extractHippocampusHistograms3D(imgDir,maxValue=4000,bins=45):
-	hippocampi = extractHippocampi3D(imgDir)
+	imgPath = os.path.join(imgDir,"*")
+
+	# This is the cache for the feature, used to make sure we do the heavy computations more often than necessary
+	outputFileName = os.path.join(featuresDir,"hippocampi3d_histo-"+str(maxValue)+"-"+str(bins)+"-"+imgDir.replace(os.sep,"-")+".feature")
+	if os.path.isfile(outputFileName):
+		save = open(outputFileName,'rb')
+		histograms = pickle.load(save)
+		save.close()
+		return histograms
+
+	# Fetch all directory listings of set_train and sort them on the image number
+	allImageSrc = sorted(glob.glob(imgPath), key=extractImgNumber)
 	histograms = []
-	for h in hippocampi:
-		histograms.append(np.histogram(h,bins=bins, range=(1,maxValue))[0])
+	n_samples = len(allImageSrc);
+	if os.path.isfile(outputFileName+".part"):
+		save = open(outputFileName+".part",'rb')
+		histograms = pickle.load(save)
+		save.close()
+		print "Found "+str(n_samples)+" images, "+str(len(histograms))+" already processed. Resuming..."
+	else:
+		print "Found "+str(n_samples)+" images!"
+		print "Preparing the data"
+
+	# Hippocampus bounding box, as estimated empirically from images: 
+	# X range: 90-125 (35)
+	# Y range: 75-125 (50)
+	# Z range: 45-90  (45)
+	
+	img_shape = nib.load(allImageSrc[0]).get_data().shape
+	printProgress(len(histograms), n_samples, decimals = 3)
+	for i in range(len(histograms),n_samples):
+		img = nib.load(allImageSrc[i])
+		imgData = img.get_data();
+		hippocampusRear = imgData[90:125, 75:100, 45:90, 0] #MAGIC NUMBERS, DO NOT MEDDLE!!!
+		hippocampusFront = imgData[90:125, 100:125, 45:90, 0] #MAGIC NUMBERS, DO NOT MEDDLE!!!
+		concatHistos = np.concatenate((np.histogram(hippocampusRear,bins=bins, range=(1,maxValue))[0].flatten(),np.histogram(hippocampusFront,bins=bins, range=(1,maxValue))[0].flatten()))
+		histograms.append(concatHistos)
+		output = open(outputFileName+".part","wb")
+		pickle.dump(histograms,output)
+		output.close()
+		printProgress(i+1, n_samples, decimals = 3)
+
+	print "\nStoring the features in "+outputFileName
+	output = open(outputFileName,"wb")
+	pickle.dump(histograms,output)
+	output.close()
+	print "Done"
+
+	if os.path.isfile(outputFileName+".part"):
+		os.remove(outputFileName+".part")
+	
 	return histograms
 
 
