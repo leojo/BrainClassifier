@@ -229,7 +229,7 @@ estA = 	make_pipeline(
 			PCA(n_components=100),
 			VotingClassifier(estimators = [
 				("LogisticRegression", LogisticRegression()),
-				("Gaussian", GaussianProcessClassifier(0.8 * RBF(0.9), warm_start=True)),
+				("Gaussian", GaussianProcessClassifier(0.5 * RBF(1.0), warm_start=True)),
 				("Naive Bayes",  GaussianNB()),
 				("NeuralNet", MLPClassifier(alpha=1.0)),
 				("RandomForest", RandomForestClassifier(max_depth=5, n_estimators=10))
