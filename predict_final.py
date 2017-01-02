@@ -21,7 +21,8 @@ from sklearn.ensemble import VotingClassifier
 
 from sklearn.feature_selection import SelectKBest, VarianceThreshold
 from sklearn.decomposition import PCA
-from sklearn.pipeline import make_pipeline
+from imblearn.pipeline import make_pipeline
+from imblearn.over_sampling import RandomOverSampler
 
 from sklearn.metrics import make_scorer
 from sklearn.model_selection import cross_val_score
@@ -251,6 +252,7 @@ estB = 	make_pipeline(
 estC = make_pipeline(
 			VarianceThreshold(),
 			SelectKBest(k=250),
+			RandomOverSampler(),
 			VotingClassifier(estimators = [
 				("LogisticRegression", LogisticRegression()),
 				("GaussianProcess", GaussianProcessClassifier(0.7* RBF(0.5), warm_start=True)),
