@@ -235,7 +235,6 @@ estA = 	make_pipeline(
 			VarianceThreshold(),
 			PCA(n_components=1500),
 			VotingClassifier(estimators = [
-				("SVC", SVC(kernel="linear", probability=True)),
 				("LogisticRegression", LogisticRegression()),
 				("Gaussian", GaussianProcessClassifier(0.7 * RBF(1.0), warm_start=True)),
 				("Naive Bayes",  GaussianNB()),
@@ -250,7 +249,6 @@ estB = 	make_pipeline(
 			PCA(n_components=1500),
 			#SelectKBest(k=250),
 			VotingClassifier(estimators = [
-				("SVC", SVC(kernel="linear", probability=True)),
 				("LogisticRegression", LogisticRegression()),
 				("Naive Bayes",  GaussianNB()),
 				("Gaussian", GaussianProcessClassifier(1.0 * RBF(1.0), warm_start=True)),
@@ -266,7 +264,6 @@ estC = make_pipeline(
 			SelectKBest(k=150),
 			RandomOverSampler(),
 			VotingClassifier(estimators = [
-				("SVC", SVC(kernel="linear", probability=True)),
 				("LogisticRegression", LogisticRegression()),
 				("GaussianProcess", GaussianProcessClassifier(0.7* RBF(0.5), warm_start=True)),
 				("RandomForest", RandomForestClassifier(max_depth=10, n_estimators=10)),
