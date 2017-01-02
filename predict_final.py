@@ -86,10 +86,10 @@ flipzones = extractFlipSim('data/set_train')
 blackzone = extractBlackzones('data/set_train',nPartitions=3)
 grayzone = extractColoredZone3D('data/set_train', 450, 800, 8)
 grayWhiteRatio = extractGrayWhiteRatio('data/set_train', 8)
-hippocMedian = extractHippocampusMedians('data/set_train')
-#hippocMean = extractHippocampusMeans('data/set_train')
-hippocVar = extractHippocampusVars('data/set_train')
-hippocHisto = extractHippocampusHistograms('data/set_train')
+hippocMedian = extractHippocampusMedians3D('data/set_train')
+hippocMean = extractHippocampusMeans3D('data/set_train')
+hippocVar = extractHippocampusVars3D('data/set_train')
+hippocHisto = extractHippocampusHistograms3D('data/set_train')
 
 sexFeatures.append(grayzone)
 sexFeatures.append(grayWhiteRatio)
@@ -118,10 +118,10 @@ testFlipzones = extractFlipSim('data/set_test')
 testBlackzone = extractBlackzones('data/set_test',nPartitions=3)
 testGrayzone = extractColoredZone3D('data/set_test', 450, 800, 8)
 testGrayWhiteRatio = extractGrayWhiteRatio('data/set_test', 8)
-testHippocMedian = extractHippocampusMedians('data/set_test')
-#testHippocMean = extractHippocampusMeans('data/set_test')
-testHippocVar = extractHippocampusVars('data/set_test')
-testHippocHisto = extractHippocampusHistograms('data/set_test')
+testHippocMedian = extractHippocampusMedians3D('data/set_test')
+testHippocMean = extractHippocampusMeans3D('data/set_test')
+testHippocVar = extractHippocampusVars3D('data/set_test')
+testHippocHisto = extractHippocampusHistograms3D('data/set_test')
 
 sexFeatures_t.append(testGrayzone)
 sexFeatures_t.append(testGrayWhiteRatio)
@@ -194,19 +194,21 @@ estA = 	make_pipeline(
 			VotingClassifier(estimators = [
 				("LogisticRegression", LogisticRegression()),
 				("Naive Bayes",  GaussianNB()),
-				("NeuralNet", MLPClassifier(alpha=1))
+				("NeuralNet", MLPClassifier(alpha=1)),
+				("RandomForest", RandomForestClassifier(max_depth=5, n_estimators=10))
 				], voting = "soft")
 			)
 		
 estB = 	make_pipeline(
 			VarianceThreshold(),
+			SelectKBest(k=250),
 			VotingClassifier(estimators = [
 				("LogisticRegression", LogisticRegression()),
 				("Naive Bayes",  GaussianNB()),
 				("Gaussian", GaussianProcessClassifier(1.0 * RBF(1.0), warm_start=True)),
 				("NeuralNet", MLPClassifier(alpha=1)),
 				("RandomForest", RandomForestClassifier(max_depth=5, n_estimators=10))
-				], voting = "soft")
+				], voting = "soft", weights=[1, 2, 3, 3, 3])
 			)
 
 estC = 	make_pipeline(
