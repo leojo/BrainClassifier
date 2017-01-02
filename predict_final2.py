@@ -240,7 +240,10 @@ estA = make_pipeline(
 			SelectKBest(k=250),
 			VotingClassifier(estimators = [
 				("LogisticRegression", LogisticRegression()),
-				("GaussianProcess", GaussianProcessClassifier(0.323 * RBF(0.4), warm_start=True)),
+				("Poly SVC", SVC(kernel="poly")),
+				#("GaussianProcess", GaussianProcessClassifier(0.323 * RBF(0.4), warm_start=True)),
+				("GaussianProcess2", GaussianProcessClassifier(0.5 * RBF(0.4), warm_start=True)),
+				#("GaussianProcess3", GaussianProcessClassifier(1.0 * RBF(0.4), warm_start=True)),
 				("RandomForest", RandomForestClassifier(max_depth=5, n_estimators=10)),
 				("NeuralNet", MLPClassifier(alpha=1)),
 				("Naive Bayes", GaussianNB()),
@@ -281,10 +284,10 @@ n_old = len(old)
 scoreC = (n_old*scoreC)/float(n_old+n_young) ## ATTEMPT TO ESTIMATE ACTUAL SCORE OF HEALTH PREDICTION
 print "Done\n"
 print "Scores:"
-print "%0.2f (+/- %0.2f) [%s]" % (-scoreA.mean(), scoreA.std(), 'Gender')
-print "%0.2f (+/- %0.2f) [%s]" % (-scoreB.mean(), scoreB.std(), 'Age')
-print "%0.2f (+/- %0.2f) [%s]" % (-scoreC.mean(), scoreC.std(), 'Health')
-print "%0.2f (+/- %0.2f) [%s]" % (-(scoreA.mean()+scoreB.mean()+scoreC.mean())/3.0, (scoreA.std()+scoreB.std()+scoreC.std())/3.0, 'Combined')
+print "%0.5f (+/- %0.5f) [%s]" % (-scoreA.mean(), scoreA.std(), 'Gender')
+print "%0.5f (+/- %0.5f) [%s]" % (-scoreB.mean(), scoreB.std(), 'Age')
+print "%0.5f (+/- %0.5f) [%s]" % (-scoreC.mean(), scoreC.std(), 'Health')
+print "%0.5f (+/- %0.5f) [%s]" % (-(scoreA.mean()+scoreB.mean()+scoreC.mean())/3.0, (scoreA.std()+scoreB.std()+scoreC.std())/3.0, 'Combined')
 
 # =================================================================	#
 #						GENERATE PREDICTIONS						#
