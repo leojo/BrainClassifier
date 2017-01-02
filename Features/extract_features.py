@@ -1163,8 +1163,8 @@ def extractLargeHippocampusHistograms3D(imgDir,maxValue=4000,bins=45):
 	
 	img_shape = nib.load(allImageSrc[0]).get_data().shape
 	printProgress(len(histograms), n_samples, decimals = 3)
-	for i in range(len(histograms),n_samples):
-		img = nib.load(allImageSrc[i])
+	for l in range(len(histograms),n_samples):
+		img = nib.load(allImageSrc[l])
 		imgData = img.get_data();
 		#hippocampusRear = imgData[90:125, 75:100, 45:90, 0] #MAGIC NUMBERS, DO NOT MEDDLE!!!
 		#hippocampusFront = imgData[90:125, 100:125, 45:90, 0] #MAGIC NUMBERS, DO NOT MEDDLE!!!
@@ -1190,7 +1190,7 @@ def extractLargeHippocampusHistograms3D(imgDir,maxValue=4000,bins=45):
 		output = open(outputFileName+".part","wb")
 		pickle.dump(histograms,output)
 		output.close()
-		printProgress(i+1, n_samples, decimals = 3)
+		printProgress(l+1, n_samples, decimals = 3)
 
 	print "\nStoring the features in "+outputFileName
 	output = open(outputFileName,"wb")
@@ -1236,8 +1236,8 @@ def extractSmallHippocampusHistograms3D(imgDir,maxValue=4000,bins=45):
 
 	img_shape = nib.load(allImageSrc[0]).get_data().shape
 	printProgress(len(histograms), n_samples, decimals = 3)
-	for i in range(len(histograms),n_samples):
-		img = nib.load(allImageSrc[i])
+	for l in range(len(histograms),n_samples):
+		img = nib.load(allImageSrc[l])
 		imgData = img.get_data();
 		#hippocampusRear = imgData[90:125, 75:100, 45:90, 0] #MAGIC NUMBERS, DO NOT MEDDLE!!!
 		#hippocampusFront = imgData[90:125, 100:125, 45:90, 0] #MAGIC NUMBERS, DO NOT MEDDLE!!!
@@ -1262,7 +1262,7 @@ def extractSmallHippocampusHistograms3D(imgDir,maxValue=4000,bins=45):
 		output = open(outputFileName+".part","wb")
 		pickle.dump(histograms,output)
 		output.close()
-		printProgress(i+1, n_samples, decimals = 3)
+		printProgress(l+1, n_samples, decimals = 3)
 
 	print "\nStoring the features in "+outputFileName
 	output = open(outputFileName,"wb")
@@ -1308,8 +1308,8 @@ def extractAmygdalaHistograms3D(imgDir,maxValue=4000,bins=45):
 
 	img_shape = nib.load(allImageSrc[0]).get_data().shape
 	printProgress(len(histograms), n_samples, decimals = 3)
-	for i in range(len(histograms),n_samples):
-		img = nib.load(allImageSrc[i])
+	for l in range(len(histograms),n_samples):
+		img = nib.load(allImageSrc[l])
 		imgData = img.get_data();
 		#hippocampusRear = imgData[90:125, 75:100, 45:90, 0] #MAGIC NUMBERS, DO NOT MEDDLE!!!
 		#hippocampusFront = imgData[90:125, 100:125, 45:90, 0] #MAGIC NUMBERS, DO NOT MEDDLE!!!
@@ -1334,7 +1334,7 @@ def extractAmygdalaHistograms3D(imgDir,maxValue=4000,bins=45):
 		output = open(outputFileName+".part","wb")
 		pickle.dump(histograms,output)
 		output.close()
-		printProgress(i+1, n_samples, decimals = 3)
+		printProgress(l+1, n_samples, decimals = 3)
 
 	print "\nStoring the features in "+outputFileName
 	output = open(outputFileName,"wb")
