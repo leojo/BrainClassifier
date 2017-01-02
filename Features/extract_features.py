@@ -1019,7 +1019,7 @@ def extractSmallHippocampi3D(imgDir):
 		img = nib.load(allImageSrc[i])
 		imgData = img.get_data();
 		hippocampus =imgData[102:125, 100:114, 45:64, 0]
-		hippocampi.append(hippocampus)
+		hippocampi.append(hippocampus.flatten())
 		output = open(outputFileName+".part","wb")
 		pickle.dump(hippocampi,output)
 		output.close()
@@ -1072,7 +1072,7 @@ def extractAmygdala3D(imgDir):
 		img = nib.load(allImageSrc[i])
 		imgData = img.get_data();
 		hippocampus =imgData[102:120, 109:120, 43:64, 0]
-		hippocampi.append(hippocampus)
+		hippocampi.append(hippocampus.flatten())
 		output = open(outputFileName+".part","wb")
 		pickle.dump(hippocampi,output)
 		output.close()

@@ -47,25 +47,39 @@ flipzones = extractFlipSim('data/set_train')
 blackzone = extractBlackzones('data/set_train',nPartitions=3)
 grayzone = extractColoredZone3D('data/set_train', 450, 800, 8)
 grayWhiteRatio = extractGrayWhiteRatio('data/set_train', 8)
-hippocMedian = extractHippocampusMedians('data/set_train')
-hippocMean = extractHippocampusMeans('data/set_train')
-hippocVar = extractHippocampusVars('data/set_train')
-hippocHisto = extractHippocampusHistograms('data/set_train')
+largeHippocMedian = extractLargeHippocampusMedians3D('data/set_train')
+largeHippocMean = extractLargeHippocampusMeans3D('data/set_train')
+largeHippocVar = extractLargeHippocampusVars3D('data/set_train')
+largeHippocHisto = extractLargeHippocampusHistograms3D('data/set_train')
+smallHippocMedian = extractSmallHippocampusMedians3D('data/set_train')
+smallHippocMean = extractSmallHippocampusMeans3D('data/set_train')
+smallHippocVar = extractSmallHippocampusVars3D('data/set_train')
+smallHippocHisto = extractSmallHippocampusHistograms3D('data/set_train')
+amygdalaMedian = extractAmygdalaMedians3D('data/set_train')
+amygdalaMean = extractAmygdalaMeans3D('data/set_train')
+amygdalaVar = extractAmygdalaVars3D('data/set_train')
+amygdalaHisto = extractAmygdalaHistograms3D('data/set_train')
+print "amygdalaMedians shape:",np.asarray(amygdalaMedian).shape
+print "amygdalaMeans shape:",np.asarray(amygdalaMean).shape
+print "amygdalaVars shape:",np.asarray(amygdalaVar).shape
+print "amygdalaHisto shape:",np.asarray(amygdalaHisto).shape
+    
 
-#sexFeatures.append(grayzone)
-sexFeatures.append(np.array(hippocMedian))
-sexFeatures.append(np.array(hippocMean))
-sexFeatures.append(np.array(hippocVar))
+
+sexFeatures.append(grayzone)
+sexFeatures.append(np.array(amygdalaMedian))
+sexFeatures.append(np.array(amygdalaMean))
+sexFeatures.append(np.array(amygdalaVar))
+#sexFeatures.append(np.array(amygdalaHisto))
 #sexFeatures.append(hippocVar)
 
-ageFeatures.append(blackzone)
-ageFeatures.append(grayzone)
-ageFeatures.append(hippocHisto)
+
+ageFeatures.append(np.array(smallHippocHisto))
 
 healthFeatures.append(flipzones)
 healthFeatures.append(blackzone)
-healthFeatures.append(hippocMedian)
-healthFeatures.append(hippocHisto)
+healthFeatures.append(largeHippocMedian)
+healthFeatures.append(largeHippocHisto)
 healthFeatures.append(np.array(targets_age).reshape(-1,1)) #Age group as feature for health
 
 

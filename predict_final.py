@@ -148,7 +148,7 @@ sexFeatures_t.append(testLargeHippocVar)
 
 ageFeatures_t.append(testBlackzone)
 ageFeatures_t.append(testGrayzone)
-ageFeatures_t.append(testHippocHisto)
+ageFeatures_t.append(testLargeHippocHisto)
 
 healthFeatures_t.append(testFlipzones)
 healthFeatures_t.append(testBlackzone)
