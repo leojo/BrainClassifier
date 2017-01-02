@@ -68,39 +68,6 @@ healthFeatures.append(hippocMedian)
 healthFeatures.append(hippocHisto)
 healthFeatures.append(np.array(targets_age).reshape(-1,1)) #Age group as feature for health
 
-# =================================================================	#
-#						TEST FEATURES								#
-# =================================================================	#
-
-sexFeatures_t = []	
-ageFeatures_t = []	
-healthFeatures_t = []	
-
-#testHisto = extractHistograms('data/set_test', 4000, 45, 9)
-testFlipzones = extractFlipSim('data/set_test')
-testBlackzone = extractBlackzones('data/set_test',nPartitions=3)
-testGrayzone = extractColoredZone3D('data/set_test', 450, 800, 8)
-testGrayWhiteRatio = extractGrayWhiteRatio('data/set_test', 8)
-testHippocMedian = extractHippocampusMedians('data/set_test')
-testHippocMean = extractHippocampusMeans('data/set_test')
-testHippocVar = extractHippocampusVars('data/set_test')
-testHippocHisto = extractHippocampusHistograms('data/set_test')
-
-#sexFeatures_t.append(testGrayzone)
-sexFeatures_t.append(np.array(testHippocMedian))
-sexFeatures_t.append(np.array(testHippocMean))
-sexFeatures_t.append(np.array(testHippocVar))
-#sexFeatures_t.append(testHippocVar)
-
-ageFeatures_t.append(testBlackzone)
-ageFeatures_t.append(testGrayzone)
-ageFeatures_t.append(testHippocHisto)
-
-healthFeatures_t.append(testFlipzones)
-healthFeatures_t.append(testBlackzone)
-healthFeatures_t.append(testHippocMedian)
-healthFeatures_t.append(testHippocHisto)
-####### remember to add age predictions as feature during final predictions
 
 # =================================================================	#
 #					CONCATENATE FEATURES							#
@@ -108,47 +75,36 @@ healthFeatures_t.append(testHippocHisto)
 
 first = True
 Csex = None
-Csex_t = None
-for f, f_t in zip(sexFeatures,sexFeatures_t):
+for f in sexFeatures:
 	if first:
 		Csex = f
-		Csex_t = f_t
 		first = False
 	else:
 		Csex = np.concatenate((Csex,f), axis = 1)
-		Csex_t = np.concatenate((Csex_t,f_t), axis=1)
 		
-print "Gender feature shapes:",Csex.shape," (Test",Csex_t.shape
+print "Gender feature shapes:",Csex.shape
 		
 first = True
 Cage = None
-Cage_t = None
-for f, f_t in zip(ageFeatures,ageFeatures_t):
+for f in ageFeatures:
 	if first:
 		Cage = f
-		Cage_t = f_t
 		first = False
 	else:
 		Cage = np.concatenate((Cage,f), axis = 1)
-		Cage_t = np.concatenate((Cage_t,f_t), axis=1)
 
-print "Age feature shapes:",Cage.shape," (Test",Cage_t.shape
+print "Age feature shapes:",Cage.shape
 
 first = True
 Chealth = None
-Chealth_t = None
-for f, f_t in zip(healthFeatures,healthFeatures_t):
+for f in healthFeatures:
 	if first:
 		Chealth = f
-		Chealth_t = f_t
 		first = False
 	else:
 		Chealth = np.concatenate((Chealth,f), axis = 1)
-		Chealth_t = np.concatenate((Chealth_t,f_t), axis=1)
 
-Chealth = np.concatenate((Chealth,healthFeatures[-1]), axis = 1)
-
-print "Health feature shapes:",Chealth.shape," (Test",Chealth_t.shape
+print "Health feature shapes:",Chealth.shape
 
 
 
