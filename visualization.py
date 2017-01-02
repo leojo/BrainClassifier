@@ -66,7 +66,7 @@ print "amygdalaHisto shape:",np.asarray(amygdalaHisto).shape
     
 
 
-sexFeatures.append(grayzone)
+sexFeatures.append(grayWhiteRatio)
 sexFeatures.append(np.array(amygdalaMedian))
 sexFeatures.append(np.array(amygdalaMean))
 sexFeatures.append(np.array(amygdalaVar))

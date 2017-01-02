@@ -100,16 +100,24 @@ amygdalaVar = extractAmygdalaVars3D('data/set_train')
 amygdalaHisto = extractAmygdalaHistograms3D('data/set_train')
 
 
-
+sexFeatures.append(blackzone)
 sexFeatures.append(grayzone)
 sexFeatures.append(grayWhiteRatio)
-sexFeatures.append(largeHippocVar)
+sexFeatures.append(amygdalaMedian)
+sexFeatures.append(amygdalaMean)
+sexFeatures.append(amygdalaVar)
+sexFeatures.append(amygdalaHisto)
+
 
 ageFeatures.append(blackzone)
 ageFeatures.append(grayzone)
+ageFeatures.append(grayWhiteRatio)
 ageFeatures.append(largeHippocHisto)
 
+
 healthFeatures.append(flipzones)
+healthFeatures.append(grayzone)
+healthFeatures.append(grayWhiteRatio)
 healthFeatures.append(blackzone)
 healthFeatures.append(largeHippocMedian)
 healthFeatures.append(largeHippocHisto)
@@ -142,15 +150,23 @@ testAmygdalaVar = extractAmygdalaVars3D('data/set_test')
 testAmygdalaHisto = extractAmygdalaHistograms3D('data/set_test')
 
 
+sexFeatures_t.append(testBlackzone)
 sexFeatures_t.append(testGrayzone)
 sexFeatures_t.append(testGrayWhiteRatio)
-sexFeatures_t.append(testLargeHippocVar)
+sexFeatures_t.append(testAmygdalaMedian)
+sexFeatures_t.append(testAmygdalaMean)
+sexFeatures_t.append(testAmygdalaVar)
+sexFeatures_t.append(testAmygdalaHisto)
 
 ageFeatures_t.append(testBlackzone)
 ageFeatures_t.append(testGrayzone)
+ageFeatures_t.append(testGrayWhiteRatio)
 ageFeatures_t.append(testLargeHippocHisto)
 
+
 healthFeatures_t.append(testFlipzones)
+healthFeatures_t.append(testGrayzone)
+healthFeatures_t.append(testGrayWhiteRatio)
 healthFeatures_t.append(testBlackzone)
 healthFeatures_t.append(testLargeHippocMedian)
 healthFeatures_t.append(testLargeHippocHisto)
@@ -210,12 +226,14 @@ print "Health feature shapes:",Chealth.shape," (Test",Chealth_t.shape
 
 estA = 	make_pipeline(
 			VarianceThreshold(),
+			PCA(n_components=100),
 			VotingClassifier(estimators = [
 				("LogisticRegression", LogisticRegression()),
+				("Gaussian", GaussianProcessClassifier(0.8 * RBF(0.9), warm_start=True)),
 				("Naive Bayes",  GaussianNB()),
-				("NeuralNet", MLPClassifier(alpha=1)),
+				("NeuralNet", MLPClassifier(alpha=1.0)),
 				("RandomForest", RandomForestClassifier(max_depth=5, n_estimators=10))
-				], voting = "soft")
+				], voting = "hard")
 			)
 		
 estB = 	make_pipeline(
@@ -227,17 +245,21 @@ estB = 	make_pipeline(
 				("Gaussian", GaussianProcessClassifier(1.0 * RBF(1.0), warm_start=True)),
 				("NeuralNet", MLPClassifier(alpha=1)),
 				("RandomForest", RandomForestClassifier(max_depth=5, n_estimators=10))
-				], voting = "soft", weights=[1, 2, 3, 3, 3])
+				], voting = "hard", weights=[1, 2, 3, 3, 3])
 			)
 
-estC = 	make_pipeline(
+estC = make_pipeline(
 			VarianceThreshold(),
+			SelectKBest(k=250),
 			VotingClassifier(estimators = [
-				("Naive Bayes",  GaussianNB()),
-				("Gaussian", GaussianProcessClassifier(1.0 * RBF(1.0), warm_start=True)),
+				("LogisticRegression", LogisticRegression()),
+				("GaussianProcess", GaussianProcessClassifier(0.7* RBF(0.5), warm_start=True)),
+				("RandomForest", RandomForestClassifier(max_depth=5, n_estimators=10)),
 				("NeuralNet", MLPClassifier(alpha=1)),
-				], voting = "soft")
+				("Naive Bayes", GaussianNB())
+				], voting = "hard")
 			)
+
 
 #estA = clone(est)
 #estB = clone(est)
