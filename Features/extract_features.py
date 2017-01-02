@@ -904,11 +904,35 @@ def extractHippocampi(imgDir):
 	
 	return hippocampi
 	
-def extractHippocampi3D(imgDir):
+def extractHippocampusMeans(imgDir):
+	hippocampi = extractHippocampi(imgDir)
+	return np.mean(hippocampi,axis=1).reshape(-1,1)
+	
+def extractHippocampusVars(imgDir):
+	hippocampi = extractHippocampi(imgDir)
+	return np.var(hippocampi,axis=1).reshape(-1,1)
+	
+	
+def extractHippocampusMedians(imgDir):
+	hippocampi = extractHippocampi(imgDir)
+	return np.median(hippocampi,axis=1).reshape(-1,1)
+
+def extractHippocampusHistograms(imgDir,maxValue=4000,bins=45):
+	hippocampi = extractHippocampi(imgDir)
+	histograms = []
+	for h in hippocampi:
+		histograms.append(np.histogram(h,bins=bins, range=(1,maxValue))[0])
+	return histograms
+
+# =========================================
+#       3D HIPPOCAMPUS AMYGDALA STUFF
+# =========================================
+
+def extractLargeHippocampi3D(imgDir):
 	imgPath = os.path.join(imgDir,"*")
 
 	# This is the cache for the feature, used to make sure we do the heavy computations more often than necessary
-	outputFileName = os.path.join(featuresDir,"hippocampi3d_raw"+imgDir.replace(os.sep,"-")+".feature")
+	outputFileName = os.path.join(featuresDir,"large_hippocampi3d_raw"+imgDir.replace(os.sep,"-")+".feature")
 	if os.path.isfile(outputFileName):
 		save = open(outputFileName,'rb')
 		hippocampi = pickle.load(save)
@@ -939,8 +963,8 @@ def extractHippocampi3D(imgDir):
 	for i in range(len(hippocampi),n_samples):
 		img = nib.load(allImageSrc[i])
 		imgData = img.get_data();
-		hippocampusRear = imgData[90:125, 75:100, 45:90, 0] #MAGIC NUMBERS, DO NOT MEDDLE!!!
-		hippocampusFront = imgData[90:125, 100:125, 45:90, 0] #MAGIC NUMBERS, DO NOT MEDDLE!!!
+		hippocampusRear = imgData[102:125, 79:100, 45:81, 0] #MAGIC NUMBERS, DO NOT MEDDLE!!!
+		hippocampusFront = imgData[102:125, 100:114, 45:81, 0] #MAGIC NUMBERS, DO NOT MEDDLE!!!
 		hippocampus = np.concatenate((hippocampusRear.flatten(),hippocampusFront.flatten()))
 		hippocampi.append(hippocampus)
 		output = open(outputFileName+".part","wb")
@@ -959,44 +983,159 @@ def extractHippocampi3D(imgDir):
 	
 	return hippocampi
 
-def extractHippocampusMeans(imgDir):
-	hippocampi = extractHippocampi(imgDir)
-	return np.mean(hippocampi,axis=1).reshape(-1,1)
-	
-def extractHippocampusVars(imgDir):
-	hippocampi = extractHippocampi(imgDir)
-	return np.var(hippocampi,axis=1).reshape(-1,1)
-	
-	
-def extractHippocampusMedians(imgDir):
-	hippocampi = extractHippocampi(imgDir)
-	return np.median(hippocampi,axis=1).reshape(-1,1)
-
-def extractHippocampusHistograms(imgDir,maxValue=4000,bins=45):
-	hippocampi = extractHippocampi(imgDir)
-	histograms = []
-	for h in hippocampi:
-		histograms.append(np.histogram(h,bins=bins, range=(1,maxValue))[0])
-	return histograms
-	
-def extractHippocampusMeans3D(imgDir):
-	hippocampi = extractHippocampi3D(imgDir)
-	return np.mean(hippocampi,axis=1).reshape(-1,1)
-	
-def extractHippocampusVars3D(imgDir):
-	hippocampi = extractHippocampi3D(imgDir)
-	return np.var(hippocampi,axis=1).reshape(-1,1)
-	
-	
-def extractHippocampusMedians3D(imgDir):
-	hippocampi = extractHippocampi3D(imgDir)
-	return np.median(hippocampi,axis=1).reshape(-1,1)
-
-def extractHippocampusHistograms3D(imgDir,maxValue=4000,bins=45):
+def extractSmallHippocampi3D(imgDir):
 	imgPath = os.path.join(imgDir,"*")
 
 	# This is the cache for the feature, used to make sure we do the heavy computations more often than necessary
-	outputFileName = os.path.join(featuresDir,"hippocampi3d_histo-"+str(maxValue)+"-"+str(bins)+"-"+imgDir.replace(os.sep,"-")+".feature")
+	outputFileName = os.path.join(featuresDir,"small_hippocampi3d_raw"+imgDir.replace(os.sep,"-")+".feature")
+	if os.path.isfile(outputFileName):
+		save = open(outputFileName,'rb')
+		hippocampi = pickle.load(save)
+		save.close()
+		return hippocampi
+
+	# Fetch all directory listings of set_train and sort them on the image number
+	allImageSrc = sorted(glob.glob(imgPath), key=extractImgNumber)
+	hippocampi = []
+	n_samples = len(allImageSrc);
+	if os.path.isfile(outputFileName+".part"):
+		save = open(outputFileName+".part",'rb')
+		hippocampi = pickle.load(save)
+		save.close()
+		print "Found "+str(n_samples)+" images, "+str(len(hippocampi))+" already processed. Resuming..."
+	else:
+		print "Found "+str(n_samples)+" images!"
+		print "Preparing the data"
+
+	# Hippocampus bounding box, as estimated empirically from images: 
+	# X range: 90-125 (35)
+	# Y range: 75-125 (50)
+	# Z range: 45-90  (45)
+	
+	img_shape = nib.load(allImageSrc[0]).get_data().shape
+	imgHalfY = img_shape[1]/2
+	printProgress(len(hippocampi), n_samples, decimals = 3)
+	for i in range(len(hippocampi),n_samples):
+		img = nib.load(allImageSrc[i])
+		imgData = img.get_data();
+		hippocampus =imgData[102:125, 100:114, 45:64, 0]
+		hippocampi.append(hippocampus)
+		output = open(outputFileName+".part","wb")
+		pickle.dump(hippocampi,output)
+		output.close()
+		printProgress(i+1, n_samples, decimals = 3)
+
+	print "\nStoring the features in "+outputFileName
+	output = open(outputFileName,"wb")
+	pickle.dump(hippocampi,output)
+	output.close()
+	print "Done"
+
+	if os.path.isfile(outputFileName+".part"):
+		os.remove(outputFileName+".part")
+	
+	return hippocampi
+
+def extractAmygdala3D(imgDir):
+	imgPath = os.path.join(imgDir,"*")
+
+	# This is the cache for the feature, used to make sure we do the heavy computations more often than necessary
+	outputFileName = os.path.join(featuresDir,"amygdala3d_raw"+imgDir.replace(os.sep,"-")+".feature")
+	if os.path.isfile(outputFileName):
+		save = open(outputFileName,'rb')
+		hippocampi = pickle.load(save)
+		save.close()
+		return hippocampi
+
+	# Fetch all directory listings of set_train and sort them on the image number
+	allImageSrc = sorted(glob.glob(imgPath), key=extractImgNumber)
+	hippocampi = []
+	n_samples = len(allImageSrc);
+	if os.path.isfile(outputFileName+".part"):
+		save = open(outputFileName+".part",'rb')
+		hippocampi = pickle.load(save)
+		save.close()
+		print "Found "+str(n_samples)+" images, "+str(len(hippocampi))+" already processed. Resuming..."
+	else:
+		print "Found "+str(n_samples)+" images!"
+		print "Preparing the data"
+
+	# Hippocampus bounding box, as estimated empirically from images: 
+	# X range: 90-125 (35)
+	# Y range: 75-125 (50)
+	# Z range: 45-90  (45)
+	
+	img_shape = nib.load(allImageSrc[0]).get_data().shape
+	imgHalfY = img_shape[1]/2
+	printProgress(len(hippocampi), n_samples, decimals = 3)
+	for i in range(len(hippocampi),n_samples):
+		img = nib.load(allImageSrc[i])
+		imgData = img.get_data();
+		hippocampus =imgData[102:120, 109:120, 43:64, 0]
+		hippocampi.append(hippocampus)
+		output = open(outputFileName+".part","wb")
+		pickle.dump(hippocampi,output)
+		output.close()
+		printProgress(i+1, n_samples, decimals = 3)
+
+	print "\nStoring the features in "+outputFileName
+	output = open(outputFileName,"wb")
+	pickle.dump(hippocampi,output)
+	output.close()
+	print "Done"
+
+	if os.path.isfile(outputFileName+".part"):
+		os.remove(outputFileName+".part")
+	
+	return hippocampi	
+	
+def extractLargeHippocampusMeans3D(imgDir):
+	hippocampi = extractLargeHippocampi3D(imgDir)
+	return np.mean(hippocampi,axis=1).reshape(-1,1)
+
+def extractSmallHippocampusMeans3D(imgDir):
+	hippocampi = extractSmallHippocampi3D(imgDir)
+	return np.mean(hippocampi,axis=1).reshape(-1,1)
+
+def extractAmygdalaMeans3D(imgDir):
+	hippocampi = extractAmygdala3D(imgDir)
+	return np.mean(hippocampi,axis=1).reshape(-1,1)
+
+	
+def extractLargeHippocampusVars3D(imgDir):
+	hippocampi = extractLargeHippocampi3D(imgDir)
+	return np.var(hippocampi,axis=1).reshape(-1,1)
+	
+
+def extractSmallHippocampusVars3D(imgDir):
+	hippocampi = extractSmallHippocampi3D(imgDir)
+	return np.var(hippocampi,axis=1).reshape(-1,1)
+		
+def extractAmygdalaVars3D(imgDir):
+	hippocampi = extractAmygdala3D(imgDir)
+	return np.var(hippocampi,axis=1).reshape(-1,1)
+		
+
+def extractLargeHippocampusMedians3D(imgDir):
+	hippocampi = extractLargeHippocampi3D(imgDir)
+	return np.median(hippocampi,axis=1).reshape(-1,1)
+
+def extractSmallHippocampusMedians3D(imgDir):
+	hippocampi = extractSmallHippocampi3D(imgDir)
+	return np.median(hippocampi,axis=1).reshape(-1,1)
+
+
+def extractAmygdalaMedians3D(imgDir):
+	hippocampi = extractAmygdala3D(imgDir)
+	return np.median(hippocampi,axis=1).reshape(-1,1)
+
+
+
+def extractLargeHippocampusHistograms3D(imgDir,maxValue=4000,bins=45):
+	imgPath = os.path.join(imgDir,"*")
+
+	# This is the cache for the feature, used to make sure we do the heavy computations more often than necessary
+	outputFileName = os.path.join(featuresDir,"large_hippocampi3d_histo-"+str(maxValue)+"-"+str(bins)+"-"+imgDir.replace(os.sep,"-")+".feature")
 	if os.path.isfile(outputFileName):
 		save = open(outputFileName,'rb')
 		histograms = pickle.load(save)
@@ -1020,11 +1159,90 @@ def extractHippocampusHistograms3D(imgDir,maxValue=4000,bins=45):
 	# X range: 90-125 (35)
 	# Y range: 75-125 (50)
 	# Z range: 45-90  (45)
-	rect = [90,125,75,125,45,90]
+	rect = [102,125,79,114,45,81]
 	
 	img_shape = nib.load(allImageSrc[0]).get_data().shape
 	printProgress(len(histograms), n_samples, decimals = 3)
 	for i in range(len(histograms),n_samples):
+		img = nib.load(allImageSrc[i])
+		imgData = img.get_data();
+		#hippocampusRear = imgData[90:125, 75:100, 45:90, 0] #MAGIC NUMBERS, DO NOT MEDDLE!!!
+		#hippocampusFront = imgData[90:125, 100:125, 45:90, 0] #MAGIC NUMBERS, DO NOT MEDDLE!!!
+		concatHistos = []
+
+		x_stop = 10000
+		y_stop = 10000
+		z_stop = 10000
+		for i in range(3):
+			x_step = int(round((rect[1]-rect[0])/3.0))
+			x_start = rect[0]+x_step*i
+			x_stop = min(x_stop,rect[0]+x_step*(i+1))
+			for j in range(3):
+				y_step = int(round((rect[3]-rect[2])/3.0))
+				y_start = rect[2]+y_step*j
+				y_stop = min(y_stop,rect[2]+y_step*(j+1))
+				for k in range(3):							
+					z_step = int(round((rect[5]-rect[4])/3.0))
+					z_start = rect[4]+z_step*k
+					z_stop = min(z_stop,rect[4]+z_step*(k+1))
+					imgPart = imgData[x_start:x_stop, y_start:y_stop, z_start:z_stop, 0]
+					histo = np.histogram(imgPart, bins=bins, range=(1,maxValue))[0].tolist()
+					concatHistos += histo
+	
+		histograms.append(concatHistos)
+		output = open(outputFileName+".part","wb")
+		pickle.dump(histograms,output)
+		output.close()
+		printProgress(i+1, n_samples, decimals = 3)
+
+	print "\nStoring the features in "+outputFileName
+	output = open(outputFileName,"wb")
+	pickle.dump(histograms,output)
+	output.close()
+	print "Done"
+
+	if os.path.isfile(outputFileName+".part"):
+		os.remove(outputFileName+".part")
+	
+	return histograms
+
+
+def extractSmallHippocampusHistograms3D(imgDir,maxValue=4000,bins=45):
+	imgPath = os.path.join(imgDir,"*")
+
+	# This is the cache for the feature, used to make sure we do the heavy computations more often than necessary
+	outputFileName = os.path.join(featuresDir,"small_hippocampi3d_histo-"+str(maxValue)+"-"+str(bins)+"-"+imgDir.replace(os.sep,"-")+".feature")
+	if os.path.isfile(outputFileName):
+		save = open(outputFileName,'rb')
+		histograms = pickle.load(save)
+		save.close()
+		return histograms
+
+	# Fetch all directory listings of set_train and sort them on the image number
+	allImageSrc = sorted(glob.glob(imgPath), key=extractImgNumber)
+	histograms = []
+	n_samples = len(allImageSrc);
+	if os.path.isfile(outputFileName+".part"):
+		save = open(outputFileName+".part",'rb')
+		histograms = pickle.load(save)
+		save.close()
+		print "Found "+str(n_samples)+" images, "+str(len(histograms))+" already processed. Resuming..."
+	else:
+		print "Found "+str(n_samples)+" images!"
+		print "Preparing the data"
+
+	# Hippocampus bounding box, as estimated empirically from images: 
+	# X range: 90-125 (35)
+	# Y range: 75-125 (50)
+	# Z range: 45-90  (45)
+	rect = [102,125,100,114,45,64]
+
+	img_shape = nib.load(allImageSrc[0]).get_data().shape
+	printProgress(len(histograms), n_samples, decimals = 3)
+	for i in range(len(histograms),n_samples):
+		x_stop = 10000
+		y_stop = 10000
+		z_stop = 10000
 		img = nib.load(allImageSrc[i])
 		imgData = img.get_data();
 		#hippocampusRear = imgData[90:125, 75:100, 45:90, 0] #MAGIC NUMBERS, DO NOT MEDDLE!!!
@@ -1062,6 +1280,82 @@ def extractHippocampusHistograms3D(imgDir,maxValue=4000,bins=45):
 		os.remove(outputFileName+".part")
 	
 	return histograms
+
+
+def extractAmygdalaHistograms3D(imgDir,maxValue=4000,bins=45):
+	imgPath = os.path.join(imgDir,"*")
+
+	# This is the cache for the feature, used to make sure we do the heavy computations more often than necessary
+	outputFileName = os.path.join(featuresDir,"amygdala3d_histo-"+str(maxValue)+"-"+str(bins)+"-"+imgDir.replace(os.sep,"-")+".feature")
+	if os.path.isfile(outputFileName):
+		save = open(outputFileName,'rb')
+		histograms = pickle.load(save)
+		save.close()
+		return histograms
+
+	# Fetch all directory listings of set_train and sort them on the image number
+	allImageSrc = sorted(glob.glob(imgPath), key=extractImgNumber)
+	histograms = []
+	n_samples = len(allImageSrc);
+	if os.path.isfile(outputFileName+".part"):
+		save = open(outputFileName+".part",'rb')
+		histograms = pickle.load(save)
+		save.close()
+		print "Found "+str(n_samples)+" images, "+str(len(histograms))+" already processed. Resuming..."
+	else:
+		print "Found "+str(n_samples)+" images!"
+		print "Preparing the data"
+
+	# Hippocampus bounding box, as estimated empirically from images: 
+	# X range: 90-125 (35)
+	# Y range: 75-125 (50)
+	# Z range: 45-90  (45)
+	rect = [102,120,109,120,43,64]
+
+	img_shape = nib.load(allImageSrc[0]).get_data().shape
+	printProgress(len(histograms), n_samples, decimals = 3)
+	for i in range(len(histograms),n_samples):
+		x_stop = 10000
+		y_stop = 10000
+		z_stop = 10000
+		img = nib.load(allImageSrc[i])
+		imgData = img.get_data();
+		#hippocampusRear = imgData[90:125, 75:100, 45:90, 0] #MAGIC NUMBERS, DO NOT MEDDLE!!!
+		#hippocampusFront = imgData[90:125, 100:125, 45:90, 0] #MAGIC NUMBERS, DO NOT MEDDLE!!!
+		concatHistos = []
+		for i in range(3):
+			x_step = int(round((rect[1]-rect[0])/3.0))
+			x_start = rect[0]+x_step*i
+			x_stop = min(x_stop,rect[0]+x_step*(i+1))
+			for j in range(3):
+				y_step = int(round((rect[3]-rect[2])/3.0))
+				y_start = rect[2]+y_step*j
+				y_stop = min(y_stop,rect[2]+y_step*(j+1))
+				for k in range(3):							
+					z_step = int(round((rect[5]-rect[4])/3.0))
+					z_start = rect[4]+z_step*k
+					z_stop = min(z_stop,rect[4]+z_step*(k+1))
+					imgPart = imgData[x_start:x_stop, y_start:y_stop, z_start:z_stop, 0]
+					histo = np.histogram(imgPart, bins=bins, range=(1,maxValue))[0].tolist()
+					concatHistos += histo
+	
+		histograms.append(concatHistos)
+		output = open(outputFileName+".part","wb")
+		pickle.dump(histograms,output)
+		output.close()
+		printProgress(i+1, n_samples, decimals = 3)
+
+	print "\nStoring the features in "+outputFileName
+	output = open(outputFileName,"wb")
+	pickle.dump(histograms,output)
+	output.close()
+	print "Done"
+
+	if os.path.isfile(outputFileName+".part"):
+		os.remove(outputFileName+".part")
+	
+	return histograms
+
 
 
 def extractImgNumber(imgPath):
