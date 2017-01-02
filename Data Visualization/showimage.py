@@ -6,9 +6,9 @@ imgNumber = str(sys.argv[1])
 image = nib.load('../data/set_train/train_'+imgNumber+'.nii')
 epi_img_data = image.get_data()
 imgShape = epi_img_data.shape
-imgHalfX = imgShape[0]/2
+imgHalfX = 108 #imgShape[0]/2
 imgHalfY = imgShape[1]/2
-imgHalfZ = imgShape[2]/2
+imgHalfZ = 54 #imgShape[2]/2
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -36,12 +36,19 @@ def show_slices(slices,rect):
 		print slice_part.shape
 		axes[1][i].imshow(slice_part.T, cmap="gray", origin="lower")
 
+
+rect = [75,50,100,50,25,25]	
+
+#Empyrical estimate: 
+# X range: 90-125
+# Y range: 75-125
+# Z range: 45-90
+
 slice_0 = epi_img_data[imgHalfX, :, :, 0]
 slice_1 = epi_img_data[:, imgHalfY, :, 0]
 slice_2 = epi_img_data[:, :, imgHalfZ, 0]
 #      [corner closest to 0, dimensions]
 #      [x,y,z,xd,yd,zd]
-rect = [50,45,100,100,25,25]
 
 show_slices([slice_0, slice_1, slice_2],rect)
 
