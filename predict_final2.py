@@ -88,10 +88,10 @@ grayWhiteRatio = extractGrayWhiteRatio('data/set_train', 8)
 flipzones = extractFlipSim('data/set_train')
 blackzone = extractBlackzones('data/set_train',nPartitions=3)
 grayzone = extractColoredZone3D('data/set_train', 450, 800, 8)
-hippocMedian = extractHippocampusMedians3D('data/set_train')
-hippocMean = extractHippocampusMeans3D('data/set_train')
-hippocVar = extractHippocampusVars3D('data/set_train')
-hippocHisto = extractHippocampusHistograms3D('data/set_train')
+hippocMedian = extractSmallHippocampusMedians3D('data/set_train')
+hippocMean = extractSmallHippocampusMeans3D('data/set_train')
+hippocVar = extractSmallHippocampusVars3D('data/set_train')
+hippocHisto = extractSmallHippocampusHistograms3D('data/set_train')
 
 
 sexFeatures = []	
@@ -129,14 +129,14 @@ allFeatures.append(hippocHisto)
 # =================================================================	#
 
 #testHisto = extractHistograms('data/set_test', 4000, 45, 9)
-testGrayWhiteRatio = extractGrayWhiteRatio('data/set_test', 8)
+testGrayWhiteRatio = extractGrayWhiteRatio('data/set_test', 8)		
 testFlipzones = extractFlipSim('data/set_test')
 testBlackzone = extractBlackzones('data/set_test',nPartitions=3)
 testGrayzone = extractColoredZone3D('data/set_test', 450, 800, 8)
-testHippocMedian = extractHippocampusMedians3D('data/set_test')
-testHippocMean = extractHippocampusMeans3D('data/set_test')
-testHippocVar = extractHippocampusVars3D('data/set_test')
-testHippocHisto = extractHippocampusHistograms3D('data/set_test')
+testHippocMedian = extractSmallHippocampusMedians3D('data/set_test')
+testHippocMean = extractSmallHippocampusMeans3D('data/set_test')
+testHippocVar = extractSmallHippocampusVars3D('data/set_test')
+testHippocHisto = extractSmallHippocampusHistograms3D('data/set_test')
 
 sexFeatures_t = []	
 ageFeatures_t = []	
@@ -156,9 +156,9 @@ healthFeatures_t.append(testHippocMedian)
 healthFeatures_t.append(testHippocHisto)
 ####### remember to add age predictions as feature during final predictions
 
-allFeatures_t = []
+allFeatures_t = []	
 #allFeatures_t.append(histo)
-ageFeatures_t.append(testGrayWhiteRatio)
+allFeatures_t.append(testGrayWhiteRatio)
 allFeatures_t.append(testFlipzones)
 allFeatures_t.append(testBlackzone)
 allFeatures_t.append(testGrayzone)
@@ -239,15 +239,11 @@ estA = make_pipeline(
 			VarianceThreshold(),
 			SelectKBest(k=250),
 			VotingClassifier(estimators = [
+				("SVC", SVC(kernel="linear")),
 				("LogisticRegression", LogisticRegression()),
-				("Poly SVC", SVC(kernel="poly")),
-				#("GaussianProcess", GaussianProcessClassifier(0.323 * RBF(0.4), warm_start=True)),
-				("GaussianProcess2", GaussianProcessClassifier(0.5 * RBF(0.4), warm_start=True)),
-				#("GaussianProcess3", GaussianProcessClassifier(1.0 * RBF(0.4), warm_start=True)),
-				("RandomForest", RandomForestClassifier(max_depth=5, n_estimators=10)),
+				("Gaussian", GaussianProcessClassifier(1.0 * RBF(1.0), warm_start=True)),
 				("NeuralNet", MLPClassifier(alpha=1)),
-				("Naive Bayes", GaussianNB()),
-				("Ada boost",AdaBoostClassifier(base_estimator=SVC(kernel="linear", C=0.025, probability=True)))
+				("RandomForest", RandomForestClassifier(max_depth=30,n_estimators=200))
 				], voting = "hard")
 			)
 estB = make_pipeline(
@@ -266,7 +262,9 @@ estC = make_pipeline(
 			SelectKBest(k=250),
 			VotingClassifier(estimators = [
 				("LogisticRegression", LogisticRegression()),
-				("GaussianProcess", GaussianProcessClassifier(0.323 * RBF(0.4), warm_start=True)),
+				#("Poly SVC", SVC(kernel="poly")),
+				#("GaussianProcess", GaussianProcessClassifier(0.323 * RBF(0.4), warm_start=True)),
+				("GaussianProcess", GaussianProcessClassifier(1.0 * RBF(0.4), warm_start=True)),
 				("RandomForest", RandomForestClassifier(max_depth=5, n_estimators=10)),
 				("NeuralNet", MLPClassifier(alpha=1)),
 				("Naive Bayes", GaussianNB())
@@ -276,9 +274,10 @@ estC = make_pipeline(
 scorer = make_scorer(partialHammingLoss,greater_is_better=False)
 
 print "Calculating scores..."
-scoreA = cross_val_score(estA, Csex, targets_sex, cv=10, scoring=scorer)
-scoreB = cross_val_score(estB, Cage, targets_age, cv=10, scoring=scorer)
-scoreC = cross_val_score(estC, Chealth_o, targets_health_old, cv=10, scoring=scorer)
+N = 20
+scoreA = cross_val_score(estA, C, targets_sex, cv=N, scoring=scorer)
+scoreB = cross_val_score(estB, C, targets_age, cv=N, scoring=scorer)
+scoreC = cross_val_score(estC, C[old], targets_health_old, cv=2*N, scoring=scorer)
 n_young = len(young)
 n_old = len(old)
 scoreC = (n_old*scoreC)/float(n_old+n_young) ## ATTEMPT TO ESTIMATE ACTUAL SCORE OF HEALTH PREDICTION
@@ -294,7 +293,7 @@ print "%0.5f (+/- %0.5f) [%s]" % (-(scoreA.mean()+scoreB.mean()+scoreC.mean())/3
 # =================================================================	#
 
 print "\nCreating predictions"
-estA.fit(Csex,targets_sex)
-estB.fit(Cage,targets_age)
-estC.fit(Chealth,targets_health)
-createPredictions(Csex_t,Cage_t,Chealth_t,estA,estB,estC)
+estA.fit(C,targets_sex)
+estB.fit(C,targets_age)
+estC.fit(C[old],targets_health_old)
+createPredictions(C_t,C_t,C_t,estA,estB,estC)
