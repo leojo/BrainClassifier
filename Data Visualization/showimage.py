@@ -15,29 +15,30 @@ import matplotlib.patches as patches
 def show_slices(slices,rect):
 	""" Function to display row of image slices """
 	fig, axes = plt.subplots(2, len(slices))
-	orientation_x = [0,2,2]
-	orientation_y = [1,1,0]
 	for i, slice in enumerate(slices):
 		axes[0][i].imshow(slice.T, cmap="gray", origin="lower")
-		
-		x = orientation_x[i]
-		y = orientation_y[i]
+		indices = [0,1,2]
+		x,y = indices[:i]+indices[i+1:]
+		x = 2*x
+		y = 2*y
+		print x,y
 		axes[0][i].add_patch(
 			patches.Rectangle(
 				(rect[x], rect[y]),   # (x,y)
-				rect[3+x],		  # width
-				rect[3+y],		  # height
+				rect[x+1]-rect[x],		  # width
+				rect[y+1]-rect[y],		  # height
 				edgecolor="red",
 				fill = False
 			)
 		)
 		
-		slice_part = slice[rect[x]:rect[x]+rect[3+x],rect[y]:rect[y]+rect[3+y]]
+		slice_part = slice[rect[x]:rect[x+1],rect[y]:rect[y+1]]
 		print slice_part.shape
 		axes[1][i].imshow(slice_part.T, cmap="gray", origin="lower")
 
 
-rect = [75,50,100,50,25,25]	
+#      [x_start,x_stop,y_start,y_stop,z_start,z_stop]
+rect = [90,125,75,125,45,90]	
 
 #Empyrical estimate: 
 # X range: 90-125
@@ -47,8 +48,6 @@ rect = [75,50,100,50,25,25]
 slice_0 = epi_img_data[imgHalfX, :, :, 0]
 slice_1 = epi_img_data[:, imgHalfY, :, 0]
 slice_2 = epi_img_data[:, :, imgHalfZ, 0]
-#      [corner closest to 0, dimensions]
-#      [x,y,z,xd,yd,zd]
 
 show_slices([slice_0, slice_1, slice_2],rect)
 
