@@ -1020,15 +1020,32 @@ def extractHippocampusHistograms3D(imgDir,maxValue=4000,bins=45):
 	# X range: 90-125 (35)
 	# Y range: 75-125 (50)
 	# Z range: 45-90  (45)
+	rect = [90,125,75,125,45,90]
 	
 	img_shape = nib.load(allImageSrc[0]).get_data().shape
 	printProgress(len(histograms), n_samples, decimals = 3)
 	for i in range(len(histograms),n_samples):
 		img = nib.load(allImageSrc[i])
 		imgData = img.get_data();
-		hippocampusRear = imgData[90:125, 75:100, 45:90, 0] #MAGIC NUMBERS, DO NOT MEDDLE!!!
-		hippocampusFront = imgData[90:125, 100:125, 45:90, 0] #MAGIC NUMBERS, DO NOT MEDDLE!!!
-		concatHistos = np.concatenate((np.histogram(hippocampusRear,bins=bins, range=(1,maxValue))[0].flatten(),np.histogram(hippocampusFront,bins=bins, range=(1,maxValue))[0].flatten()))
+		#hippocampusRear = imgData[90:125, 75:100, 45:90, 0] #MAGIC NUMBERS, DO NOT MEDDLE!!!
+		#hippocampusFront = imgData[90:125, 100:125, 45:90, 0] #MAGIC NUMBERS, DO NOT MEDDLE!!!
+		concatHistos = []
+		for i in range(3):
+			x_step = int(round((rect[1]-rect[0])/3.0))
+			x_start = rect[0]+x_step*i
+			x_stop = min(x_stop,rect[0]+x_step*(i+1))
+			for j in range(3):
+				y_step = int(round((rect[3]-rect[2])/3.0))
+				y_start = rect[2]+y_step*j
+				y_stop = min(y_stop,rect[2]+y_step*(j+1))
+				for k in range(3):							
+					z_step = int(round((rect[5]-rect[4])/3.0))
+					z_start = rect[4]+z_step*k
+					z_stop = min(z_stop,rect[4]+z_step*(k+1))
+					imgPart = imgData[x_start:x_stop, y_start:y_stop, z_start:z_stop, 0]
+					histo = np.histogram(imgPart, bins=bins, range=(1,maxValue))[0].tolist()
+					concatHistos += histo
+	
 		histograms.append(concatHistos)
 		output = open(outputFileName+".part","wb")
 		pickle.dump(histograms,output)
