@@ -40,7 +40,8 @@ def show_slices(slices,rect):
 #      [x_start,x_stop,y_start,y_stop,z_start,z_stop]
 #LARGE HIPPOCAMPUS: rect = [102,125,79,114,45,81]	
 #SMALL HIPPOCAMPUS: rect = [102,125,100,114,45,64]	
-rect = [97,120,109,120,43,64]	
+# AMYGDALA rect = [102,120,109,120,43,64]
+rect = [102,120,109,120,43,64]	
 #Empyrical estimate: 
 # X range: 90-125
 # Y range: 75-125
