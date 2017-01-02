@@ -82,7 +82,7 @@ sexFeatures = []
 ageFeatures = []	
 healthFeatures = []	
 
-#histo = extractHistograms('data/set_train', 4000, 45, 9)
+histo = extractHistograms('data/set_train', 4000, 45, 9)
 flipzones = extractFlipSim('data/set_train')
 blackzone = extractBlackzones('data/set_train',nPartitions=3)
 grayzone = extractColoredZone3D('data/set_train', 450, 800, 8)
@@ -101,6 +101,7 @@ amygdalaVar = extractAmygdalaVars3D('data/set_train')
 amygdalaHisto = extractAmygdalaHistograms3D('data/set_train')
 
 
+sexFeatures.append(histo)
 sexFeatures.append(blackzone)
 sexFeatures.append(grayzone)
 sexFeatures.append(grayWhiteRatio)
@@ -110,12 +111,14 @@ sexFeatures.append(amygdalaVar)
 sexFeatures.append(amygdalaHisto)
 
 
+ageFeatures.append(histo)
 ageFeatures.append(blackzone)
 ageFeatures.append(grayzone)
 ageFeatures.append(grayWhiteRatio)
 ageFeatures.append(largeHippocHisto)
 
 
+healthFeatures.append(histo)
 healthFeatures.append(flipzones)
 healthFeatures.append(grayzone)
 healthFeatures.append(grayWhiteRatio)
@@ -132,7 +135,7 @@ sexFeatures_t = []
 ageFeatures_t = []	
 healthFeatures_t = []	
 
-#testHisto = extractHistograms('data/set_test', 4000, 45, 9)
+testHisto = extractHistograms('data/set_test', 4000, 45, 9)
 testFlipzones = extractFlipSim('data/set_test')
 testBlackzone = extractBlackzones('data/set_test',nPartitions=3)
 testGrayzone = extractColoredZone3D('data/set_test', 450, 800, 8)
@@ -151,6 +154,7 @@ testAmygdalaVar = extractAmygdalaVars3D('data/set_test')
 testAmygdalaHisto = extractAmygdalaHistograms3D('data/set_test')
 
 
+sexFeatures_t.append(testHisto)
 sexFeatures_t.append(testBlackzone)
 sexFeatures_t.append(testGrayzone)
 sexFeatures_t.append(testGrayWhiteRatio)
@@ -159,12 +163,14 @@ sexFeatures_t.append(testAmygdalaMean)
 sexFeatures_t.append(testAmygdalaVar)
 sexFeatures_t.append(testAmygdalaHisto)
 
+ageFeatures_t.append(testHisto)
 ageFeatures_t.append(testBlackzone)
 ageFeatures_t.append(testGrayzone)
 ageFeatures_t.append(testGrayWhiteRatio)
 ageFeatures_t.append(testLargeHippocHisto)
 
 
+healthFeatures_t.append(testHisto)
 healthFeatures_t.append(testFlipzones)
 healthFeatures_t.append(testGrayzone)
 healthFeatures_t.append(testGrayWhiteRatio)
@@ -230,28 +236,32 @@ estA = 	make_pipeline(
 			PCA(n_components=100),
 			VotingClassifier(estimators = [
 				("LogisticRegression", LogisticRegression()),
-				("Gaussian", GaussianProcessClassifier(0.5 * RBF(1.0), warm_start=True)),
+				("Gaussian", GaussianProcessClassifier(0.7 * RBF(1.0), warm_start=True)),
 				("Naive Bayes",  GaussianNB()),
-				("NeuralNet", MLPClassifier(alpha=1.0)),
-				("RandomForest", RandomForestClassifier(max_depth=5, n_estimators=10))
+				("NeuralNet", MLPClassifier(alpha=0.7)),
+				("RandomForest", RandomForestClassifier(max_depth=10, n_estimators=10))
 				], voting = "hard")
 			)
 		
 estB = 	make_pipeline(
 			VarianceThreshold(),
-			SelectKBest(k=250),
+			#PCA(n_components=10),
+			PCA(n_components=1500),
+			#SelectKBest(k=250),
 			VotingClassifier(estimators = [
 				("LogisticRegression", LogisticRegression()),
 				("Naive Bayes",  GaussianNB()),
 				("Gaussian", GaussianProcessClassifier(1.0 * RBF(1.0), warm_start=True)),
 				("NeuralNet", MLPClassifier(alpha=1)),
 				("RandomForest", RandomForestClassifier(max_depth=5, n_estimators=10))
-				], voting = "hard", weights=[1, 2, 3, 3, 3])
+				], voting = "hard")#, weights=[1, 2, 3, 3, 3])
 			)
 
 estC = make_pipeline(
 			VarianceThreshold(),
-			SelectKBest(k=250),
+			#PCA(n_components=10),
+			PCA(n_components=1500),
+			#SelectKBest(k=150),
 			RandomOverSampler(),
 			VotingClassifier(estimators = [
 				("LogisticRegression", LogisticRegression()),
